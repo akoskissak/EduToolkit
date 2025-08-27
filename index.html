@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="sr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Generator obrazovnih alata</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Generator interaktivnih obrazovnih alata</h1>
+      <div class="theme-switcher">
+        <i data-lucide="sun" class="theme-icon-left"></i>
+        <div class="theme-toggle" id="themeToggle">
+          <div class="knob"></div>
+        </div>
+        <i data-lucide="moon" class="theme-icon-right"></i>
+      </div>
+      <label><i data-lucide="book"></i>Naziv alata:</label>
+      <input id="title" placeholder="npr. Arhimedov zakon" />
+      <div class="error-message" id="error-title"></div>
+
+      <label><i data-lucide="align-left"></i>Opis koncepta:</label>
+      <textarea
+        id="description"
+        placeholder="Objasnite koji koncept se prikazuje i šta treba učenici da nauče."
+        rows="3"
+      ></textarea>
+      <div class="error-message" id="error-description"></div>
+
+      <label><i data-lucide="users"></i>Ciljna grupa (razred, nivo):</label>
+      <input id="audience" placeholder="npr. 6. razred osnovne škole" />
+      <div class="error-message" id="error-audience"></div>
+
+      <label
+        ><i data-lucide="monitor"></i>Početni prikaz (šta se vidi na ekranu kada
+        se otvori alat):</label
+      >
+      <textarea
+        id="initial"
+        placeholder="npr. cev sa vodom i tri objekta A, B i C"
+        rows="2"
+      ></textarea>
+      <div class="error-message" id="error-initial"></div>
+
+      <label
+        ><i data-lucide="zap"></i>Interaktivna pravila (IF-THEN logika):</label
+      >
+      <div id="rulesContainer"></div>
+      <button type="button" class="addRule-button" onclick="addRule()">
+        <i data-lucide="plus" class="btn"></i> Dodaj pravilo
+      </button>
+
+      <label
+        ><i data-lucide="sticky-note"></i>Dodatne želje (animacije, tekst, boje,
+        objašnjenja itd.):</label
+      >
+      <textarea
+        id="extras"
+        placeholder="npr. animacija potapanja, tekst koji se pojavljuje, legenda..."
+        rows="2"
+      ></textarea>
+
+      <div class="button-row">
+        <div class="left-buttons">
+          <button id="generateBtn">
+            <i data-lucide="circle-play"></i> Generiši alat
+          </button>
+          <button id="downloadBtn">
+            <i data-lucide="download"></i> Preuzmi ZIP
+          </button>
+        </div>
+        <button id="resetBtn">
+          <i data-lucide="refresh-ccw"></i> Resetuj Formu
+        </button>
+      </div>
+
+      <div id="spinner">
+        <div class="loader"></div>
+        <span>Generisanje alata...</span>
+      </div>
+
+      <h2>Pregled alata:</h2>
+      <iframe id="preview"></iframe>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

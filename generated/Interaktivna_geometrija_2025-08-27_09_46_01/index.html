@@ -1,0 +1,119 @@
+```html
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktivna geometrija</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            margin: 20px 0;
+            transition: opacity 0.5s;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+        .message {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interaktivna geometrija</h1>
+    <p>Ovaj alat omogućava učenicima da eksperimentišu sa osnovnim oblicima poput krugova i kvadrata i vide kako se menjaju kada se klikne na njih.</p>
+    <canvas id="canvas" width="600" height="400"></canvas>
+    <div class="message" id="message"></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let circle = {
+            x: 50,
+            y: 100,
+            radius: 30,
+            color: 'red',
+            clicked: 0
+        };
+
+        let square = {
+            x: 150,
+            y: 70,
+            size: 60,
+            color: 'blue',
+            clicked: 0
+        };
+
+        function drawCircle() {
+            ctx.beginPath();
+            ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+            ctx.fillStyle = circle.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawSquare() {
+            ctx.beginPath();
+            ctx.rect(square.x, square.y, square.size, square.size);
+            ctx.fillStyle = square.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawCircle();
+            drawSquare();
+        }
+
+        function handleClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            // Check circle click
+            if (Math.sqrt((mouseX - circle.x) ** 2 + (mouseY - circle.y) ** 2) < circle.radius) {
+                circle.clicked++;
+                if (circle.clicked === 1) {
+                    circle.color = 'green';
+                    document.getElementById('message').textContent = 'Bravo!';
+                } else {
+                    circle.radius += 5;
+                }
+            }
+
+            // Check square click
+            if (mouseX > square.x && mouseX < square.x + square.size && mouseY > square.y && mouseY < square.y + square.size) {
+                square.clicked++;
+                if (square.clicked === 1) {
+                    square.color = 'yellow';
+                    document.getElementById('message').textContent = 'Super!';
+                } else {
+                    square.size += 5;
+                    ctx.rotate((Math.PI / 180) * 15);
+                }
+            }
+
+            // Make the title tremble
+            const title = document.querySelector('h1');
+            title.style.opacity = 0;
+            setTimeout(() => {
+                title.style.opacity = 1;
+            }, 100);
+            
+            draw();
+        }
+
+        canvas.addEventListener('click', handleClick);
+        draw();
+    </script>
+</body>
+</html>
+```

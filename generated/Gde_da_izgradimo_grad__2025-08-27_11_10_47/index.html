@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gde da izgradimo grad?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+        }
+        h1 {
+            margin: 20px 0;
+        }
+        #map {
+            width: 80%;
+            height: 500px;
+            position: relative;
+            border: 2px solid black;
+            overflow: hidden;
+        }
+        .area {
+            cursor: pointer;
+            position: absolute;
+        }
+        .river {
+            background-color: rgba(0, 0, 255, 0.5);
+        }
+        .mountain {
+            background-color: rgba(128, 128, 128, 0.5);
+        }
+        .forest {
+            background-color: rgba(0, 128, 0, 0.5);
+        }
+        #description {
+            margin-top: 20px;
+            width: 80%;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        #resetButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gde da izgradimo grad?</h1>
+    <p>Ovaj alat omogućava učenicima da izaberu prirodne oblasti na interaktivnoj mapi i saznaju kako te oblasti utiču na razvoj grada i dostupne resurse. Svaka oblast je jasno definisana kao zaseban oblik sa sopstvenom bojom i tekstualnim objašnjenjem.</p>
+
+    <div id="map">
+        <div class="area river" style="left: 30%; top: 70%; width: 40%; height: 10%;" data-name="river"></div>
+        <div class="area mountain" style="left: 10%; top: 30%; width: 30%; height: 40%;" data-name="mountain"></div>
+        <div class="area forest" style="left: 70%; top: 40%; width: 20%; height: 30%;" data-name="forest"></div>
+    </div>
+
+    <div id="description">Izaberi oblast da vidiš mogućnosti razvoja grada.</div>
+    <button id="resetButton">Izaberi drugu oblast</button>
+
+    <script>
+        let clickCount = {
+            river: 0,
+            mountain: 0,
+            forest: 0,
+        };
+
+        const descriptions = {
+            river: [
+                "Grad pored reke – razvijeno ribarstvo, transport i trgovina. Nedostatak: drvo i kamen.",
+                "Luka se razvija, ali nema dovoljno materijala za velike građevine."
+            ],
+            mountain: [
+                "Planinski grad – dostupni su kamenolomi i rudnici. Nedostatak: voda i plodno zemljište.",
+                "Industrija raste, ali razvoj je ogranicen usled nepovoljnih uslova za poljoprivredu."
+            ],
+            forest: [
+                "Šumski grad – dostupno drvo i lov, ali nedostaju kamen i trgovačke rute.",
+                "Grad raste sporo zbog loših veza sa ostalim oblastima."
+            ]
+        };
+
+        const mapAreas = document.querySelectorAll('.area');
+        const descriptionPanel = document.getElementById('description');
+
+        mapAreas.forEach(area => {
+            area.addEventListener('click', () => {
+                const name = area.getAttribute('data-name');
+                clickCount[name]++;
+
+                if (clickCount[name] === 1) {
+                    descriptionPanel.textContent = descriptions[name][0];
+                    if (name === 'river') {
+                        // Add boat animation
+                        area.style.backgroundColor = 'blue';
+                    } else if (name === 'mountain') {
+                        // Add smoke animation
+                        area.style.backgroundColor = 'gray';
+                    } else if (name === 'forest') {
+                        // Add lumberjack animation
+                        area.style.backgroundColor = 'green';
+                    }
+                } else {
+                    descriptionPanel.textContent = descriptions[name][1];
+                }
+            });
+        });
+
+        document.getElementById('resetButton').addEventListener('click', () => {
+            clickCount = { river: 0, mountain: 0, forest: 0 };
+            descriptionPanel.textContent = "Izaberi oblast da vidiš mogućnosti razvoja grada.";
+            mapAreas.forEach(area => {
+                area.style.backgroundColor = '';
+            });
+        });
+    </script>
+</body>
+</html>

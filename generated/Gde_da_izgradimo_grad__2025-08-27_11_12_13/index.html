@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gde da izgradimo grad?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #map {
+            width: 600px;
+            height: 400px;
+            position: relative;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        .area {
+            position: absolute;
+            cursor: pointer;
+        }
+        #info-panel {
+            width: 300px;
+            height: 400px;
+            display: inline-block;
+            vertical-align: top;
+            padding: 10px;
+            border-left: 1px solid #ccc;
+            text-align: left;
+        }
+        #reset-button {
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <h1>Gde da izgradimo grad?</h1>
+    <p>Ovaj alat omogućava učenicima da izaberu prirodne oblasti na interaktivnoj mapi i saznaju kako te oblasti utiču na razvoj grada i dostupne resurse. Svaka oblast je jasno definisana kao zaseban oblik sa sopstvenom bojom i tekstualnim objašnjenjem.</p>
+    
+    <div id="map"></div>
+    <div id="info-panel"></div>
+    <button id="reset-button">Izaberi drugu oblast</button>
+    
+    <script>
+        let areas = [];
+        let clickedCount = { river: 0, mountain: 0, forest: 0 };
+
+        function setup() {
+            let canvas = createCanvas(600, 400);
+            canvas.parent('map');
+
+            areas.push(new Area(150, 300, 300, 100, color(0, 0, 255), "river", "Grad pored reke – razvijeno ribarstvo, transport i trgovina. Nedostatak: drvo i kamen."));
+            areas.push(new Area(0, 100, 200, 300, color(150, 150, 150), "mountain", "Planinski grad – dostupni su kamenolomi i rudnici. Nedostatak: voda i plodno zemljište."));
+            areas.push(new Area(400, 100, 200, 300, color(34, 139, 34), "forest", "Šumski grad – dostupno drvo i lov, ali nedostaju kamen i trgovačke rute."));
+
+            noLoop();
+        }
+
+        function draw() {
+            clear();
+            background(240);
+            for (let area of areas) {
+                area.display();
+            }
+        }
+
+        function mousePressed() {
+            for (let area of areas) {
+                if (area.isMouseOver()) {
+                    area.handleClick();
+                }
+            }
+        }
+
+        class Area {
+            constructor(x, y, w, h, col, name, description) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.col = col;
+                this.name = name;
+                this.description = description;
+                this.icon = null;
+            }
+
+            display() {
+                fill(this.col);
+                rect(this.x, this.y, this.w, this.h);
+            }
+
+            isMouseOver() {
+                return mouseX > this.x && mouseX < this.x + this.w && mouseY > this.y && mouseY < this.y + this.h;
+            }
+
+            handleClick() {
+                clickedCount[this.name] += 1;
+                let panel = document.getElementById('info-panel');
+                if (clickedCount[this.name] === 1) {
+                    panel.innerHTML = this.description;
+                } else if (clickedCount[this.name] > 1) {
+                    if (this.name === "river") {
+                        panel.innerHTML = "Luka se razvija, ali nema dovoljno materijala za velike građevine.";
+                        this.showAnimation("boat");
+                    } else if (this.name === "mountain") {
+                        panel.innerHTML = "Industrija raste, ali razvoj je ograničen usled nepovoljnih uslova za poljoprivredu.";
+                        this.showAnimation("smoke");
+                    } else if (this.name === "forest") {
+                        panel.innerHTML = "Grad raste sporo zbog loših veza sa ostalim oblastima.";
+                        this.showAnimation("logger");
+                    }
+                }
+            }
+
+            showAnimation(type) {
+                // Implementacija animacije u zavisnosti od tipa
+                this.icon = createImg(`icons/${type}.png`, '');
+                this.icon.position(random(this.x, this.x + this.w - 30), random(this.y, this.y + this.h - 30));
+                this.icon.size(30, 30);
+                setTimeout(() => this.icon.remove(), 2000); // Remove icon after 2 seconds
+            }
+        }
+
+        document.getElementById('reset-button').onclick = function() {
+            clickedCount = { river: 0, mountain: 0, forest: 0 };
+            document.getElementById('info-panel').innerHTML = '';
+            redraw();
+        };
+    </script>
+</body>
+</html>
