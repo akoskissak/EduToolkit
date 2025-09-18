@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <title>Primarni tretman prečićavanja otpadnih voda</title>
+  <style>
+    :root{
+      --bg:#f3f6f9;
+      --card:#ffffff;
+      --accent:#2b6fa6;
+      --muted:#6b7280;
+      --pipe:#cfcfcf;
+      --pipe-inside:#e9eef5;
+    }
+    html,body{height:100%;margin:0;font-family:Segoe UI, Roboto, Arial, sans-serif;background:var(--bg);color:#0b1726}
+    .container{max-width:1100px;margin:24px auto;padding:20px;background:linear-gradient(180deg, var(--card), #fbfdff);border-radius:12px;box-shadow:0 6px 30px rgba(15,23,42,0.08);}
+    header{display:flex;align-items:flex-start;gap:20px}
+    h1{margin:0;font-size:24px;color:var(--accent)}
+    p.desc{margin-top:8px;color:var(--muted);line-height:1.4}
+    .controls{display:flex;gap:12px;align-items:center;margin-top:12px}
+    .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    .btn.secondary{background:#e6eef8;color:var(--accent);border:1px solid rgba(43,111,166,0.12)}
+    .info{margin-left:auto;color:var(--muted);font-size:14px}
+    #sketch-holder{margin-top:18px;border-radius:10px;overflow:hidden;border:1px solid rgba(10,20,30,0.04);background:linear-gradient(180deg,#f9fbff,#eef6ff)}
+    .legend{display:flex;gap:18px;margin-top:10px;align-items:center}
+    .legend .item{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+    .swatch{width:18px;height:12px;border-radius:3px}
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    /* small responsive */
+    @media (max-width:720px){
+      .container{margin:10px;padding:14px}
+      h1{font-size:20px}
+    }
+  </style>
+  <!-- audience: Student treće godine -->
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Primarni tretman prečićavanja otpadnih voda</h1>
+        <p class="desc">Grube rešetke služe za uklanjanje krupnih čestica (lišće, grane, veće krupne materije) iz otpadne vode pre daljih faza obrade. Pomoću interaktivne simulacije posmatraj kako rešetka hvata krupne čestice i kako se bistrenje vode odvija nakon uklanjanja krupnih nečistoća.</p>
+        <div class="controls">
+          <button id="resetBtn" class="btn secondary">Resetuj simulaciju</button>
+          <button id="autoFeedBtn" class="btn">Auto dovod: UKLJUČENO</button>
+          <div class="info" id="clickInfo">Klikovi (rešetka): 0</div>
+        </div>
+        <div class="legend">
+          <div class="item"><div class="swatch" style="background:linear-gradient(90deg,#6b7ca8,#2b6fa6)"></div> Otpadna voda</div>
+          <div class="item"><div class="swatch" style="background:#72bcd4"></div> Bistra voda</div>
+          <div class="item"><div class="swatch" style="background:#8b5e3c"></div> Krupni materijal</div>
+        </div>
+      </div>
+    </header>
+
+    <div id="sketch-holder"></div>
+    <footer>Interakcija: Klikni na rešetku (sredina cevi) da je podigneš. Prvi klik podiže rešetku i počinje hvatanje krupnih čestica; sledeći klik spušta rešetku. Brojač klikova menja ponašanje preko then_first/then_next logike.</footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <script>
+    // Implementacija interaktivnog edukativnog alata za "Grube rešetke"
+    // Praćenje klikova po objektu (rešetka) i izvršavanje then_first / then_next logike.
+    // then_first: prvi klik podiže rešetku i pokreće hvatanje.
+    // then_next: svaki naredni klik naizmenično spušta/podiže rešetku; hvatanje se nastavlja dok je podignuta.
+
+    let sketch = function(p){
+      // Canvas dimenzije
+      const W = 1000;
+      const H = 420;
+
+      // Pipe geometry
+      const pipe = {
+        x: 60,
+        y: 150,
+        w: 880,
+        h: 160,
+        wall: 14,
+        radius: 80
+      };
+
+      // Grate object with click tracking and state machine
+      const grate = {
+        x: pipe.x + pipe.w/2 - 40,
+        w: 80,
+        barCount: 6,
+        barSpacing: 12,
+        baseY: pipe.y + 20, // inside pipe (lowered)
+        liftY: pipe.y - 100, // fully lifted position (bars move upward)
+        y: null,
+        liftProgress: 0, // 0 - lowered, 1 - lifted
+        speed: 0.06,
+        clickCount: 0,
+        lifted: false,
+        animating: false
+      };
+
+      let waterParticles = [];
+      let debrisParticles = [];
+      let captured = []; // captured debris moving upward on grate
+      let autoFeed = true; // continuous incoming debris
+      let waterClarity = 0.0; // 0 = very dirty, 1 = clear
+      let lastRemoveTime = 0;
+
+      // Appearance colors
+      const colors = {
+        dirtyA: p.color(80, 66, 52),
+        dirtyB: p.color(115, 95, 78),
+        clear: p.color(95,170,220),
+        pipeOuter: p.color(190,190,190),
+        pipeInner: p.color(245,247,250),
+        grate: p.color(80,80,85),
+        leaf: p.color(100,60,30)
+      };
+
+      p.setup = function(){
+        let cnv = p.createCanvas(W, H);
+        cnv.parent('sketch-holder');
+        p.noStroke();
+        grate.y = grate.baseY;
+        spawnInitial();
+        // link buttons
+        p.select('#resetBtn').mousePressed(resetSim);
+        p.select('#autoFeedBtn').mousePressed(toggleAutoFeed);
+      };
+
+      function resetSim(){
+        waterParticles = [];
+        debrisParticles = [];
+        captured = [];
+        spawnInitial();
+        grate.clickCount = 0;
+        grate.liftProgress = 0;
+        grate.lifted = false;
+        grate.animating = false;
+        grate.y = grate.baseY;
+        waterClarity = 0.0;
+        updateInfo();
+      }
+      function toggleAutoFeed(){
+        autoFeed = !autoFeed;
+        p.select('#autoFeedBtn').html(autoFeed ? 'Auto dovod: UKLJUČENO' : 'Auto dovod: ISKLJUČENO');
+      }
+
+      function spawnInitial(){
+        // fill with moving water particles (represent turbulence and turbidity)
+        for(let i=0;i<160;i++){
+          waterParticles.push(new WaterParticle(p.random(pipe.x+20, pipe.x+pipe.w-20), p.random(pipe.y+20, pipe.y+pipe.h-20)));
+        }
+        // spawn some debris
+        for(let i=0;i<18;i++){
+          debrisParticles.push(new DebrisParticle(p.random(pipe.x+10, pipe.x+pipe.w-30), p.random(pipe.y+10, pipe.y+pipe.h-10), true));
+        }
+      }
+
+      // Water particle class (small particles for texture)
+      class WaterParticle{
+        constructor(x,y){
+          this.x = x; this.y = y;
+          this.r = p.random(2,5);
+          this.vx = p.random(0.3,1.2);
+          this.vy = p.random(-0.4,0.4);
+          this.alpha = p.random(80,200);
+        }
+        update(){
+          this.x += this.vx;
+          this.y += this.vy + p.sin(this.x*0.02)*0.2;
+          if(this.x > pipe.x + pipe.w - 8) this.x = pipe.x + 12;
+          if(this.y < pipe.y + 8) this.y = pipe.y + 8;
+          if(this.y > pipe.y + pipe.h - 8) this.y = pipe.y + pipe.h - 8;
+        }
+        draw(){
+          // color depends on waterClarity
+          let dirtyCol = p.lerpColor(colors.dirtyA, colors.dirtyB, p.noise(this.x*0.02,this.y*0.03));
+          let col = p.lerpColor(dirtyCol, colors.clear, waterClarity);
+          p.fill(col.levels[0],col.levels[1],col.levels[2],this.alpha);
+          p.circle(this.x,this.y,this.r);
+        }
+      }
+
+      // Debris particle class (leaf/branch shapes)
+      class DebrisParticle{
+        constructor(x,y,randomVel=true){
+          this.x = x; this.y = y;
+          this.r = p.random(10,22);
+          this.vx = randomVel ? p.random(0.6,1.4) : 0.8;
+          this.vy = p.random(-0.2,0.2);
+          this.type = p.random() < 0.6 ? 'leaf' : 'stick';
+          this.caught = false;
+          this.removeTimer = 0;
+        }
+        update(){
+          if(this.caught){
+            // captured: movement handled by captured list
+            return;
+          }
+          // basic flow: left to right
+          this.x += this.vx;
+          this.y += this.vy + p.sin(this.x*0.01)*0.3;
+          // boundaries keep inside pipe
+          if(this.x > pipe.x + pipe.w - 12) this.x = pipe.x + 12;
+          if(this.x < pipe.x + 12) this.x += 0.5;
+        }
+        draw(){
+          if(this.caught) return;
+          p.push();
+          p.translate(this.x,this.y);
+          // rotate slightly based on vx
+          p.rotate((this.vy)*0.4);
+          if(this.type==='leaf'){
+            p.fill(colors.leaf);
+            p.noStroke();
+            p.beginShape();
+            p.vertex(-this.r*0.5,0);
+            p.bezierVertex(-this.r*0.9,-this.r*0.6,this.r*0.7,-this.r*0.8,this.r*0.9,0);
+            p.bezierVertex(this.r*0.7,this.r*0.9,-this.r*0.9,this.r*0.6,-this.r*0.5,0);
+            p.endShape(p.CLOSE);
+            p.fill(80,40,20,120);
+            p.rect(-this.r*0.05, -this.r*0.2, this.r*0.1, this.r*0.8);
+          } else {
+            p.fill(110,70,40);
+            p.noStroke();
+            p.rect(-this.r/1.6, -this.r*0.15, this.r*1.6, this.r*0.3, 4);
+          }
+          p.pop();
+        }
+      }
+
+      // Captured object (moves upward along grate and fades)
+      class Captured{
+        constructor(particle, originX, originY, targetY){
+          this.p = particle;
+          this.x = originX;
+          this.y = originY;
+          this.targetY = targetY;
+          this.vy = -1.6 - p.random(0,0.8);
+          this.alpha = 255;
+          this.age = 0;
+        }
+        update(){
+          this.y += this.vy;
+          this.age += 1;
+          this.alpha = p.map(this.age,0,100,255,30);
+          if(this.y < this.targetY) this.y = this.targetY;
+        }
+        draw(){
+          p.push();
+          p.translate(this.x,this.y);
+          p.scale(0.9);
+          p.tint(255,this.alpha);
+          // draw small marker of captured debris (rectangle or leaf)
+          p.fill(120,80,50, this.alpha);
+          p.noStroke();
+          p.rect(-8,-6,16,12,3);
+          p.pop();
+        }
+      }
+
+      p.draw = function(){
+        p.clear();
+        // background
+        p.push();
+        p.fill(245);
+        p.noStroke();
+        p.rect(0,0,W,H);
+        p.pop();
+
+        // Animate grate lift progress toward target (lifted or lowered)
+        if(grate.animating){
+          let target = grate.lifted ? 1 : 0;
+          // ease toward target
+          grate.liftProgress += (target - grate.liftProgress) * (grate.speed);
+          if(Math.abs(target - grate.liftProgress) < 0.01){
+            grate.liftProgress = target;
+            grate.animating = false;
+            // if fully lifted, set y to liftY
+            grate.y = p.lerp(grate.baseY, grate.liftY, grate.liftProgress);
+          } else {
+            grate.y = p.lerp(grate.baseY, grate.liftY, grate.liftProgress);
+          }
+        } else {
+          grate.y = p.lerp(grate.baseY, grate.liftY, grate.liftProgress);
+        }
+
+        // spawn new debris occasionally if autoFeed
+        if(autoFeed && p.frameCount % 45 === 0 && debrisParticles.length < 36){
+          let spawnY = p.random(pipe.y + 18, pipe.y + pipe.h - 18);
+          debrisParticles.push(new DebrisParticle(pipe.x + 12, spawnY));
+        }
+
+        // Draw pipe outer shape (rounded rectangle representing half-open pipe)
+        drawPipe();
+
+        // Update and draw water particles behind debris for layering
+        for(let wp of waterParticles){
+          wp.update();
+          wp.draw();
+        }
+
+        // Update debris: check collision with grate when grate is lifted
+        for(let i = debrisParticles.length - 1; i >= 0; i--){
+          let d = debrisParticles[i];
+          d.update();
+
+          // detect crossing grate x-range
+          let grateLeft = grate.x - 4;
+          let grateRight = grate.x + grate.w + 4;
+
+          // If grate is lifted, debris that reach the grate x-range and have not been caught will be captured
+          if(!d.caught && grate.liftProgress > 0.2){
+            // consider collision if within vertical reach of grate bottom area (i.e., near pipe top)
+            if(d.x > grateLeft && d.x < grateRight && d.y < pipe.y + pipe.h/2 + 12){
+              // capture this debris
+              d.caught = true;
+              // compute targetY for captured pile (above pipe)
+              let targetY = pipe.y - 40 - p.random(0,40);
+              let cap = new Captured(d, d.x, d.y, targetY);
+              captured.push(cap);
+              // remove from debrisParticles (but keep index references safe)
+              debrisParticles.splice(i,1);
+              continue;
+            }
+          }
+
+          // If grate is lowered and near debris that were previously captured and might fall back: not implemented for realism
+          // Draw debris
+          d.draw();
+        }
+
+        // Update captured list
+        for(let i = captured.length - 1; i >= 0; i--){
+          let c = captured[i];
+          c.update();
+          c.draw();
+          // remove once faded or above top
+          if(c.age > 120){
+            captured.splice(i,1);
+            // each removed captured particle improves clarity slightly
+            waterClarity = p.min(1.0, waterClarity + 0.010);
+          }
+        }
+
+        // Slowly reduce turbidity based on number of captures and time
+        if(captured.length > 0){
+          waterClarity = p.min(1.0, waterClarity + 0.0008 * captured.length);
+        } else {
+          // slight natural settling if no captures
+          waterClarity = p.max(0.0, waterClarity - 0.0001);
+        }
+
+        // Draw grate (bars) and its supporting frame
+        drawGrate();
+
+        // small annotation of rešetka clickable area
+        drawAnnotations();
+
+        // HUD overlay to show status
+        drawStatus();
+
+        // occasionally introduce fresh turbidity if grate was lowered to simulate re-introduction
+        if(!grate.lifted && p.frameCount % 600 === 0){
+          // add some new debris and reduce clarity
+          for(let k=0;k<6;k++){
+            debrisParticles.push(new DebrisParticle(pipe.x + 12, p.random(pipe.y+10, pipe.y+pipe.h-10)));
+          }
+          waterClarity = p.max(0, waterClarity - 0.15);
+        }
+      };
+
+      function drawPipe(){
+        // Outer wall
+        p.push();
+        p.fill(colors.pipeOuter);
+        p.stroke(200);
+        p.strokeWeight(1);
+        // rounded rectangle with clipped top (open top)
+        let px = pipe.x;
+        let py = pipe.y;
+        let pw = pipe.w;
+        let ph = pipe.h;
+        // draw outer rounded rectangle (full)
+        p.rect(px, py - pipe.radius/2, pw, ph + pipe.radius/2, 24);
+        // inner (pipe opening) top is open: draw inner fill
+        p.noStroke();
+        p.fill(colors.pipeInner);
+        p.rect(px + pipe.wall, py + pipe.wall - pipe.radius/6, pw - pipe.wall*2, ph - pipe.wall + pipe.radius/6, 12);
+        p.pop();
+
+        // top decorative lip
+        p.push();
+        p.noFill();
+        p.stroke(170);
+        p.strokeWeight(1.5);
+        p.arc(pipe.x + pipe.w/2, pipe.y + pipe.radius/2, pipe.w - 10, pipe.radius*1.4, p.PI, 0);
+        p.pop();
+      }
+
+      function drawGrate(){
+        // Grate frame (vertical bars) that move upward based on liftProgress
+        p.push();
+        // frame supports
+        let frameW = grate.w + 12;
+        let frameH = 110;
+        let frameX = grate.x - 6;
+        let frameY = grate.y - 6;
+        p.fill(60);
+        p.noStroke();
+        // side supports
+        p.rect(frameX, frameY, 6, frameH, 4);
+        p.rect(frameX + frameW - 6, frameY, 6, frameH, 4);
+
+        // draw bars (inside pipe when lowered)
+        p.fill(colors.grate);
+        p.noStroke();
+        let barW = (grate.w - (grate.barCount-1)*grate.barSpacing) / grate.barCount;
+        for(let i=0;i<grate.barCount;i++){
+          let bx = grate.x + i*(barW + grate.barSpacing) + 2;
+          let by = grate.y;
+          // when lowered, bars sit inside pipe; when lifted they move upward
+          p.rect(bx, by, barW, 80, 4);
+        }
+        // top crossbar
+        p.fill(48);
+        p.rect(grate.x-4, grate.y - 8, grate.w+8, 10, 4);
+
+        // slight highlight when hovered (p.mouseX etc)
+        if(isMouseOverGrate()){
+          p.fill(255,255,255,30);
+          p.rect(grate.x-4, grate.y - 8, grate.w+8, 10, 4);
+        }
+
+        p.pop();
+      }
+
+      function drawAnnotations(){
+        // small arrow and text
+        p.push();
+        p.fill(30);
+        p.noStroke();
+        p.textSize(13);
+        p.textAlign(p.CENTER);
+        p.text('Klikni na rešetku da je podigneš', grate.x + grate.w/2, pipe.y + pipe.h + 30);
+        p.pop();
+      }
+
+      function drawStatus(){
+        p.push();
+        // info box top-left of canvas
+        p.fill(255,255,255,230);
+        p.stroke(200);
+        p.rect(18,18,260,52,8);
+        p.noStroke();
+        p.fill(30);
+        p.textSize(13);
+        p.textAlign(p.LEFT);
+        p.text('Status rešetke: ' + (grate.lifted ? 'PODIGNUTA' : 'SPUŠTENA'), 30, 36);
+        p.fill(90);
+        p.textSize(12);
+        p.text('Broj uhvaćenih krupnih čestica: ' + Math.round((p.frameCount%9999) * 0.001) /* placeholder */, 30, 54);
+        p.pop();
+
+        // overlay water tint depending on clarity
+        p.push();
+        let clr = p.lerpColor(colors.dirtyA, colors.clear, waterClarity);
+        p.noStroke();
+        // paint inner water rectangle with gradient-ish effect
+        let gradSteps = 18;
+        for(let i=0;i<gradSteps;i++){
+          let t = i/gradSteps;
+          let c = p.lerpColor(colors.dirtyB, clr, t);
+          p.fill(c.levels[0], c.levels[1], c.levels[2], 170 - t*80);
+          let y = pipe.y + pipe.h * t;
+          p.rect(pipe.x + pipe.wall, y, pipe.w - pipe.wall*2, pipe.h/gradSteps + 1);
+        }
+        p.pop();
+      }
+
+      function isMouseOverGrate(){
+        // convert p.mouseX/Y into local
+        if(p.mouseX >= grate.x - 6 && p.mouseX <= grate.x + grate.w + 6 && p.mouseY >= grate.y - 12 && p.mouseY <= grate.y + 84){
+          return true;
+        }
+        return false;
+      }
+
+      p.mousePressed = function(){
+        // only respond if click inside canvas
+        if(p.mouseX < 0 || p.mouseX > W || p.mouseY < 0 || p.mouseY > H) return;
+
+        if(isMouseOverGrate()){
+          // increment clickCount for grate and decide action
+          grate.clickCount++;
+          updateInfo();
+
+          if(grate.clickCount === 1){
+            // then_first: first-time lift sequence
+            thenFirstAction();
+          } else {
+            // then_next: subsequent toggles
+            thenNextAction();
+          }
+        }
+      };
+
+      function thenFirstAction(){
+        // First time click: lift grate and start active capture
+        grate.lifted = true;
+        grate.animating = true;
+        // slightly faster lift when first
+        grate.speed = 0.11;
+        // small visual effect: add a burst of capture attempt for nearby debris
+        for(let i=0;i<debrisParticles.length;i++){
+          let d = debrisParticles[i];
+          if(d.x > grate.x - 30 && d.x < grate.x + grate.w + 30 && d.y < pipe.y + pipe.h/1.5){
+            d.caught = true;
+            let cap = new Captured(d, d.x, d.y, pipe.y - 30 - p.random(0,40));
+            captured.push(cap);
+            debrisParticles.splice(i,1);
+            i--;
+          }
+        }
+        // initial clarity boost as large debris removed
+        waterClarity = p.min(1.0, waterClarity + 0.12);
+        // reset speed to default after small delay
+        setTimeout(()=>{grate.speed = 0.06;}, 600);
+      }
+
+      function thenNextAction(){
+        // Alternate behavior: each subsequent click toggles lifted state
+        grate.lifted = !grate.lifted;
+        grate.animating = true;
+        // small effect: when lowering, create a small splash and reintroduce some small debris
+        if(!grate.lifted){
+          // reintroduce a few small debris (simulate falling back)
+          for(let k=0;k<4;k++){
+            debrisParticles.push(new DebrisParticle(grate.x + p.random(-20,20), pipe.y + 30 + p.random(0,40), false));
+          }
+          // reduce clarity slightly since some particles re-enter
+          waterClarity = p.max(0, waterClarity - 0.08);
+        } else {
+          // when lifting again, catch any debris near grate
+          for(let i=debrisParticles.length-1;i>=0;i--){
+            let d = debrisParticles[i];
+            if(d.x > grate.x - 18 && d.x < grate.x + grate.w + 18 && d.y < pipe.y + pipe.h/1.5){
+              d.caught = true;
+              let cap = new Captured(d, d.x, d.y, pipe.y - 30 - p.random(0,40));
+              captured.push(cap);
+              debrisParticles.splice(i,1);
+            }
+          }
+          waterClarity = p.min(1.0, waterClarity + 0.06);
+        }
+      }
+
+      function updateInfo(){
+        p.select('#clickInfo').html('Klikovi (rešetka): ' + grate.clickCount);
+      }
+
+      function random(min,max){ return p.random(min,max); }
+    };
+
+    new p5(sketch);
+  </script>
+</body>
+</html>

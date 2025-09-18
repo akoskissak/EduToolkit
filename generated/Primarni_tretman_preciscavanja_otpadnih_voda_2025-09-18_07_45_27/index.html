@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<title>Primarni tretman preciscavanja otpadnih voda</title>
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 12px;
+    background: #f4f7fb;
+    color: #123;
+  }
+  h1 {
+    margin: 6px 0 4px 0;
+    font-size: 26px;
+  }
+  p.desc {
+    margin: 0 0 12px 0;
+    max-width: 900px;
+  }
+  #canvasWrap {
+    border: 1px solid #c8d3df;
+    background: linear-gradient(#eaf3ff, #e1eefc);
+    padding: 10px;
+    border-radius: 8px;
+    width: 960px;
+  }
+  svg {
+    width: 100%;
+    height: 520px;
+    display: block;
+  }
+  .label {
+    font-size: 13px;
+    fill: #043049;
+  }
+  .hint {
+    font-size: 12px;
+    fill: #044;
+    opacity: 0.9;
+  }
+  .control-box {
+    margin-top: 8px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .buttonish {
+    background:#1e90a6;
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    user-select:none;
+    font-size:13px;
+  }
+  .buttonish.gray { background:#7b8b94; }
+  .status {
+    font-size:13px;
+    color:#063;
+    margin-left:8px;
+  }
+  /* subtle glow when active */
+  .activeGlow { filter: drop-shadow(0 0 6px rgba(30,144,166,0.6)); }
+</style>
+</head>
+<body>
+<!-- audience: Studenti trece godine -->
+<h1>Primarni tretman preciscavanja otpadnih voda</h1>
+<p class="desc">Primarni tretman preciscavanja vode je jedan od važnijih faza u čišćenju vode. Ovaj interaktivni prikaz ilustruje rezervoar sa nagnutom mehaničkom rešetkom koja zadržava krupnije čestice. Kliknite elemente (pogon, rešetku, lupa) da vidite kako se sistemi ponašaju i kako se otpad prikuplja.</p>
+
+<div id="canvasWrap">
+  <svg id="svg" viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" >
+    <!-- Tank background -->
+    <defs>
+      <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#79c0ff"/>
+        <stop offset="1" stop-color="#4aa3f2"/>
+      </linearGradient>
+
+      <clipPath id="tankClip">
+        <rect x="40" y="80" width="740" height="380" rx="6" ry="6"></rect>
+      </clipPath>
+
+      <clipPath id="magnifyClip">
+        <circle cx="1020" cy="150" r="90"></circle>
+      </clipPath>
+
+      <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+
+    <!-- Title inside svg -->
+    <text x="70" y="40" class="label">Rezervoar i mehanička rešetka (prvi tretman)</text>
+
+    <!-- Tank outline -->
+    <g id="tankGroup">
+      <rect x="40" y="80" width="740" height="380" fill="#f0f6fb" stroke="#9fb6c9" stroke-width="3" rx="6" ry="6"></rect>
+
+      <!-- Water area (clipped) -->
+      <g clip-path="url(#tankClip)">
+        <rect id="waterRect" x="40" y="240" width="740" height="220" fill="url(#waterGrad)" opacity="0.95"></rect>
+
+        <!-- animated small particles representing flow -->
+        <g id="flowParticles" opacity="0.9"></g>
+
+        <!-- flow arrow -->
+        <g transform="translate(100,210)">
+          <path d="M0,0 L140,0" stroke="#0a6db0" stroke-width="3" marker-end="url(#arrow)" opacity="0.6"/>
+        </g>
+
+      </g>
+
+      <!-- Tank overflow / outlet region at right -->
+      <rect x="740" y="230" width="40" height="80" fill="#dbeaf6" stroke="#9fb6c9" stroke-width="2"></rect>
+    </g>
+
+    <!-- Mechanical screen group (bars anchored, tilted) -->
+    <!-- Screen pivot at (760, 260) -->
+    <g id="screenWrapper" transform="translate(760,260) rotate(-25)" style="cursor:pointer;">
+      <!-- Bars -->
+      <g id="screenBars">
+        <!-- draw several parallel bars, separated -->
+        <!-- bars represented as thin rectangles -->
+      </g>
+
+      <!-- support frame for screen -->
+      <rect x="-8" y="-120" width="16" height="240" fill="#6b7780" opacity="0.95" rx="3"></rect>
+
+      <!-- teeth darker fill to indicate cutting edge -->
+      <g id="teeth" transform="translate(0,-60)">
+        <!-- small triangles along edge -->
+      </g>
+    </g>
+
+    <!-- Motor housing (green) -->
+    <g id="motor" transform="translate(820,290)" style="cursor:pointer;">
+      <rect x="-10" y="-18" width="120" height="60" rx="8" ry="8" fill="#3aa14d" stroke="#225b2a" stroke-width="2"></rect>
+      <text x="40" y="8" text-anchor="middle" class="label" style="fill:white; font-size:14px;">Pogon</text>
+      <!-- small gear icon -->
+      <g id="gear" transform="translate(96,12) scale(0.9)">
+        <circle cx="0" cy="0" r="10" fill="#fff6" stroke="#fff" stroke-width="1"></circle>
+        <g stroke="#fff" stroke-width="2">
+          <line x1="-8" y1="0" x2="8" y2="0"></line>
+          <line x1="0" y1="-8" x2="0" y2="8"></line>
+        </g>
+      </g>
+    </g>
+
+    <!-- Collection bin (where debris accumulates when raised) -->
+    <g id="binGroup" transform="translate(930,120)">
+      <rect x="-24" y="-14" width="140" height="44" rx="6" fill="#c9d3d7" stroke="#8a9599"></rect>
+      <text x="48" y="16" text-anchor="middle" class="label" style="font-size:13px;">Sakupljač krupnog otpada</text>
+      <g id="collected" transform="translate(6,0)"></g>
+    </g>
+
+    <!-- magnified view circle -->
+    <g id="magnifyWrapper" transform="translate(1020,150)" style="cursor:pointer;">
+      <circle cx="0" cy="0" r="92" fill="#fff" stroke="#6b7780" stroke-width="3" filter="url(#softShadow)"></circle>
+      <text x="0" y="-110" text-anchor="middle" class="label" style="font-size:13px">Uvećani prikaz rešetke</text>
+
+      <g id="magnifiedContent" clip-path="url(#magnifyClip)"></g>
+    </g>
+
+    <!-- small control hints -->
+    <text x="70" y="500" class="hint">Kliknite na: Pogon (uključi/isključi rotaciju), Rešetku (podigni / očisti), Lupu (pokaži broj zadržanih čestica)</text>
+    <text x="70" y="520" class="hint">Prvi klik često prikazuje početnu reakciju (then_first), sledeći klikovi menjaju ponašanje (then_next sekvence).</text>
+
+  </svg>
+</div>
+
+<div class="control-box">
+  <div id="motorBtn" class="buttonish">Pogon: Toggle</div>
+  <div id="liftBtn" class="buttonish gray">Rešetka: Podigni/Očisti</div>
+  <div id="lupaBtn" class="buttonish">Lupa: Pregled</div>
+  <div id="status" class="status">Stanje: rešetka spuštena, pogon isključen</div>
+</div>
+
+<script>
+/* Podaci i početno stanje (prema JSON ulazu)
+   audience: Studenti trece godine
+*/
+
+(function(){
+  const svg = document.getElementById('svg');
+  const screenWrapper = document.getElementById('screenWrapper');
+  const screenBars = document.getElementById('screenBars');
+  const teethGroup = document.getElementById('teeth');
+  const motor = document.getElementById('motor');
+  const gear = document.getElementById('gear');
+  const flowParticles = document.getElementById('flowParticles');
+  const magnifiedContent = document.getElementById('magnifiedContent');
+  const magnifyWrapper = document.getElementById('magnifyWrapper');
+  const binGroup = document.getElementById('collected');
+  const status = document.getElementById('status');
+
+  // Interaction counters and states
+  let motorClicks = 0;
+  let motorRunning = false;
+  let screenClicks = 0; // 0 initial, 1 lifted, 2 cleaned/collected
+  let magnifyClicks = 0;
+
+  // Particle data representing debris stuck between bars
+  let trappedParticles = []; // each has local coords relative to screenWrapper
+  let collectedParticles = [];
+
+  // Screen geometry parameters
+  const BAR_COUNT = 7;
+  const BAR_WIDTH = 6;
+  const BAR_LENGTH = 160;
+  const BAR_GAP = 14;
+
+  // initial render: create bars and trapped particles
+  function createScreenBars(){
+    // Clear
+    while (screenBars.firstChild) screenBars.removeChild(screenBars.firstChild);
+    // bars centered along x=0, y from -100 to 100
+    const startY = - ( (BAR_COUNT-1) * BAR_GAP ) / 2;
+    for(let i=0;i<BAR_COUNT;i++){
+      const y = startY + i*BAR_GAP;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', -BAR_LENGTH);
+      rect.setAttribute('y', y - BAR_WIDTH/2);
+      rect.setAttribute('width', BAR_LENGTH);
+      rect.setAttribute('height', BAR_WIDTH);
+      rect.setAttribute('fill', '#d9dde0');
+      rect.setAttribute('stroke', '#8c9499');
+      rect.setAttribute('stroke-width', 1);
+      screenBars.appendChild(rect);
+    }
+  }
+
+  function createTeeth(){
+    while (teethGroup.firstChild) teethGroup.removeChild(teethGroup.firstChild);
+    // small dark triangles near the edge to suggest teeth
+    const startY = - ( (BAR_COUNT-1) * BAR_GAP ) / 2;
+    for(let i=0;i<BAR_COUNT-1;i++){
+      const y = startY + i*BAR_GAP + BAR_GAP/2;
+      const tri = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const path = `M -12 ${y} L 6 ${y-6} L 6 ${y+6} Z`;
+      tri.setAttribute('d', path);
+      tri.setAttribute('fill', '#6b6f73');
+      teethGroup.appendChild(tri);
+    }
+  }
+
+  function seedTrappedParticles(){
+    trappedParticles = [];
+    // place a few dark particles lodged between specific bars near the top raised side (local coords)
+    // Coordinates relative to screenWrapper (bars go from -BAR_LENGTH to 0). Place near x=-18 to -36 around top side.
+    const positions = [
+      {x:-32, y:-30},
+      {x:-24, y:-14},
+      {x:-28, y:-2},
+      {x:-35, y:12},
+      {x:-22, y:28}
+    ];
+    // create in SVG (as group inside screen group)
+    positions.forEach((p,i)=>{
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', p.x);
+      c.setAttribute('cy', p.y);
+      c.setAttribute('r', 6 + (i%2)); // slight size variation
+      c.setAttribute('fill', '#17202a'); // dark particle
+      c.setAttribute('stroke','#000');
+      c.setAttribute('stroke-width',0.6);
+      c.setAttribute('class','trapped');
+      screenWrapper.appendChild(c);
+      trappedParticles.push({cx:p.x, cy:p.y, r:6+(i%2), node:c});
+    });
+  }
+
+  createScreenBars();
+  createTeeth();
+  seedTrappedParticles();
+
+  // Magnified content: clone a view of the bars and trapped particles into magnify area
+  function renderMagnifiedView(){
+    // Clear
+    while (magnifiedContent.firstChild) magnifiedContent.removeChild(magnifiedContent.firstChild);
+    // create a scaled group that shows the edge of screen with bars and trapped particles
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    // Place a simplified representation: a few enlarged bars and the trapped particles positions
+    // For clarity, map local coordinates to a zoomed area
+    const scale = 1.8;
+    const offsetX = -180; // pick area near bars' ends
+    // draw 5 bars
+    const startY = - ( (BAR_COUNT-1) * BAR_GAP ) / 2;
+    for(let i=0;i<5;i++){
+      const y = startY + i*BAR_GAP;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', offsetX*scale);
+      rect.setAttribute('y', y*scale - (BAR_WIDTH*scale)/2);
+      rect.setAttribute('width', (BAR_LENGTH*0.6)*scale);
+      rect.setAttribute('height', (BAR_WIDTH*scale));
+      rect.setAttribute('fill', '#d9dde0');
+      rect.setAttribute('stroke', '#8c9499');
+      rect.setAttribute('stroke-width', 1.2);
+      g.appendChild(rect);
+    }
+    // draw trapped particles scaled
+    trappedParticles.forEach(tp=>{
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', (tp.cx + 40) * scale);
+      c.setAttribute('cy', tp.cy * scale);
+      c.setAttribute('r', tp.r * 1.6);
+      c.setAttribute('fill', '#111');
+      c.setAttribute('stroke', '#000');
+      c.setAttribute('stroke-width', 0.8);
+      c.setAttribute('class','magParticle');
+      g.appendChild(c);
+    });
+    // rotate in same orientation as screen (-25deg)
+    g.setAttribute('transform', 'rotate(-25 1020 150) translate(860,120)');
+    magnifiedContent.appendChild(g);
+  }
+
+  renderMagnifiedView();
+
+  // Flow particles animation
+  const flows = [];
+  function seedFlowParticles(){
+    // create moving small lighter dots across water region
+    while (flowParticles.firstChild) flowParticles.removeChild(flowParticles.firstChild);
+    flows.length = 0;
+    for(let i=0;i<14;i++){
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      const x = 60 + Math.random()*680;
+      const y = 260 + Math.random()*120;
+      c.setAttribute('cx', x);
+      c.setAttribute('cy', y);
+      c.setAttribute('r', 3 + Math.random()*2);
+      c.setAttribute('fill', 'rgba(255,255,255,0.8)');
+      flowParticles.appendChild(c);
+      flows.push({node:c, x:x, y:y, speed: 0.2 + Math.random()*0.6});
+    }
+  }
+  seedFlowParticles();
+
+  // status update helper
+  function updateStatus(){
+    const motorTxt = motorRunning ? 'pogon uključen' : 'pogon isključen';
+    let screenTxt = 'rešetka spuštena';
+    if(screenClicks===1) screenTxt = 'rešetka podignuta (zadržava otpad)';
+    if(screenClicks===2) screenTxt = 'rešetka očišćena (otpad prikupljen)';
+    status.textContent = `Stanje: ${screenTxt}, ${motorTxt}`;
+  }
+
+  updateStatus();
+
+  // Animation loop
+  let last = performance.now();
+  let angleOsc = 0;
+  function animate(now){
+    const dt = now - last;
+    last = now;
+
+    // animate flow particles
+    flows.forEach(f=>{
+      f.x += f.speed * dt * 0.06; // speed scaling
+      if(f.x > 740) f.x = 60;
+      f.node.setAttribute('cx', f.x);
+    });
+
+    // motor gear rotation when running
+    if(motorRunning){
+      const gEl = gear;
+      const rot = (now/20) % 360;
+      gEl.setAttribute('transform', `translate(96,12) rotate(${rot}) scale(0.9)`);
+      // slight jiggle of screen to show motion (oscillation)
+      angleOsc = Math.sin(now/120) * 2.5;
+      // base rotation was -25; apply additional small oscillation
+      screenWrapper.setAttribute('transform', `translate(760,260) rotate(${ -25 + angleOsc })`);
+    } else {
+      gear.setAttribute('transform', `translate(96,12) scale(0.9)`);
+      // if screen is in lifted state, keep the lifted rotation static
+      if(screenClicks===1){
+        screenWrapper.setAttribute('transform', `translate(760,260) rotate(${-12})`);
+      } else if(screenClicks===2){
+        screenWrapper.setAttribute('transform', `translate(760,260) rotate(${-28})`);
+      } else {
+        screenWrapper.setAttribute('transform', `translate(760,260) rotate(${-25})`);
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  // Interaction semantics follow IF-THEN logic with then_first and then_next sequences.
+
+  // Motor click behavior:
+  // IF click on motor:
+  // THEN_FIRST: start motor rotation animation, visual highlight, show "Pogon uključen"
+  // THEN_NEXT: toggle motor off/on on each subsequent click (stop/start animation)
+  function motorClicked(){
+    if(motorClicks===0){
+      // then_first
+      motorRunning = true;
+      motor.classList.add('activeGlow');
+      motorClicks++;
+      screenWrapper.classList.add('activeGlow');
+    } else {
+      // then_next: toggle each time
+      motorRunning = !motorRunning;
+      if(motorRunning){
+        motor.classList.add('activeGlow');
+        screenWrapper.classList.add('activeGlow');
+      } else {
+        motor.classList.remove('activeGlow');
+        screenWrapper.classList.remove('activeGlow');
+      }
+      motorClicks++;
+    }
+    updateStatus();
+  }
+
+  motor.addEventListener('click', function(e){
+    motorClicked();
+    e.stopPropagation();
+  });
+  document.getElementById('motorBtn').addEventListener('click', motorClicked);
+
+  // Screen click behavior:
+  // IF click on screen:
+  // THEN_FIRST: podigni rešetku (promeni ugao u merljiv način) i animiraj pomeranje zadržanih čestica ka sakupljaču
+  // THEN_NEXT: sledeći klik očisti rešetku (prebaci čestice u kolektor) i ukloni ih sa rešetke; sledeći klik vraća u početno stanje
+  function screenClicked(){
+    if(screenClicks===0){
+      // then_first: lift
+      screenClicks = 1;
+      // animate rotate to -12 degrees
+      screenWrapper.setAttribute('transform', `translate(760,260) rotate(${-12})`);
+      // move trapped particles upward toward bin (animate)
+      trappedParticles.forEach((tp,i)=>{
+        const node = tp.node;
+        // animate using simple interval
+        const startY = parseFloat(node.getAttribute('cy'));
+        const targetY = startY - 80 - Math.random()*20;
+        const startX = parseFloat(node.getAttribute('cx'));
+        const targetX = 60 + i*10; // slide a bit along
+        animateParticle(node, startX, startY, targetX, targetY, 700 + i*80);
+      });
+      // update magnified view
+      setTimeout(renderMagnifiedView, 500);
+    } else if(screenClicks===1){
+      // then_next: collect to bin (move particles from screen into binGroup, then remove from trapped)
+      screenClicks = 2;
+      // animate particles moving to bin (global coordinates)
+      trappedParticles.forEach((tp,i)=>{
+        const node = tp.node;
+        // compute current global position of node
+        const ctm = node.getCTM();
+        const cx = parseFloat(node.getAttribute('cx'));
+        const cy = parseFloat(node.getAttribute('cy'));
+        const globalX = ctm.e + cx;
+        const globalY = ctm.f + cy;
+        // spawn a representation circle in svg root to animate to bin
+        const clone = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        clone.setAttribute('cx', globalX);
+        clone.setAttribute('cy', globalY);
+        clone.setAttribute('r', tp.r);
+        clone.setAttribute('fill', '#141617');
+        clone.setAttribute('opacity', 0.95);
+        clone.setAttribute('stroke', '#000');
+        svg.appendChild(clone);
+        // bin target (approx coordinates)
+        const targetX = 930 + 6; // binGroup transform x
+        const targetY = 120 + 8 + (i*6);
+        animateParticleGlobal(clone, globalX, globalY, targetX, targetY, 900 + i*120, ()=>{
+          // after arriving, remove clone and add small indicator in bin
+          svg.removeChild(clone);
+          const b = document.createElementNS('http://www.w3.org/2000/svg','circle');
+          b.setAttribute('cx', 10 + i*8);
+          b.setAttribute('cy', 6);
+          b.setAttribute('r', 6);
+          b.setAttribute('fill', '#1b1b1b');
+          b.setAttribute('opacity', 0.95);
+          binGroup.appendChild(b);
+          collectedParticles.push(b);
+        });
+      });
+      // remove trapped nodes from screenWrapper
+      setTimeout(()=>{
+        trappedParticles.forEach(tp=>{
+          if(tp.node && tp.node.parentNode) tp.node.parentNode.removeChild(tp.node);
+        });
+        trappedParticles = [];
+        renderMagnifiedView();
+      }, 950);
+    } else {
+      // then_next wrap-around: bring rešetka nazad u početni položaj i reset seed if none left
+      screenClicks = 0;
+      screenWrapper.setAttribute('transform', `translate(760,260) rotate(${-25})`);
+      // if no trappedParticles (cleaned), we may respawn some new ones to illustrate reuse (educational)
+      if(trappedParticles.length===0){
+        setTimeout(()=>{
+          seedTrappedParticles();
+          renderMagnifiedView();
+        }, 700);
+      }
+    }
+    updateStatus();
+  }
+
+  function animateParticle(node, sx, sy, tx, ty, dur){
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-start)/dur);
+      const ease = t<0.5 ? 2*t*t : -1 + (4-2*t)*t; // ease
+      const cx = sx + (tx - sx)*ease;
+      const cy = sy + (ty - sy)*ease;
+      node.setAttribute('cx', cx);
+      node.setAttribute('cy', cy);
+      if(t<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function animateParticleGlobal(node, sx, sy, tx, ty, dur, cb){
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-start)/dur);
+      const ease = (1 - Math.cos(t*Math.PI))/2;
+      const cx = sx + (tx - sx)*ease;
+      const cy = sy + (ty - sy)*ease;
+      node.setAttribute('cx', cx);
+      node.setAttribute('cy', cy);
+      if(t<1) requestAnimationFrame(step);
+      else if(cb) cb();
+    }
+    requestAnimationFrame(step);
+  }
+
+  // attach click on screenWrapper
+  screenWrapper.addEventListener('click', function(e){
+    screenClicked();
+    e.stopPropagation();
+  });
+  document.getElementById('liftBtn').addEventListener('click', screenClicked);
+
+  // Magnify click behavior:
+  // IF click on magnified area:
+  // THEN_FIRST: show pulse and display count of trapped particles (tooltip)
+  // THEN_NEXT: toggle highlight (pulse) / hide
+  let magnifyTooltip = null;
+  function magnifyClicked(){
+    if(magnifyClicks===0){
+      // then_first
+      // create tooltip near magnify
+      const count = trappedParticles.length;
+      magnifyTooltip = document.createElementNS('http://www.w3.org/2000/svg','text');
+      magnifyTooltip.setAttribute('x', 1020);
+      magnifyTooltip.setAttribute('y', 260);
+      magnifyTooltip.setAttribute('text-anchor','middle');
+      magnifyTooltip.setAttribute('class','label');
+      magnifyTooltip.setAttribute('fill','#072');
+      magnifyTooltip.textContent = `Zadržano čestica: ${count}`;
+      svg.appendChild(magnifyTooltip);
+      // pulse magnified circle
+      magnifyWrapper.querySelector('circle').setAttribute('stroke', '#1e90a6');
+      magnifyWrapper.querySelector('circle').classList.add('activeGlow');
+      setTimeout(()=>{ magnifyWrapper.querySelector('circle').classList.remove('activeGlow'); }, 900);
+      magnifyClicks++;
+    } else {
+      // then_next: toggle highlight of mag particles
+      magnifyClicks++;
+      const magParts = magnifiedContent.querySelectorAll('.magParticle');
+      if(magnifyClicks % 2 === 0){
+        // highlight
+        magParts.forEach(p=> p.setAttribute('fill','#ffcc00'));
+      } else {
+        // unhighlight
+        magParts.forEach(p=> p.setAttribute('fill','#111'));
+      }
+      // update tooltip if present with current counts (maybe after cleaning)
+      const count = trappedParticles.length;
+      if(magnifyTooltip){
+        magnifyTooltip.textContent = `Zadržano čestica: ${count}`;
+      }
+    }
+    // remove tooltip after a while
+    if(magnifyTooltip){
+      setTimeout(()=>{ if(magnifyTooltip && magnifyTooltip.parentNode) magnifyTooltip.parentNode.removeChild(magnifyTooltip); magnifyTooltip = null; }, 2400);
+    }
+  }
+  magnifyWrapper.addEventListener('click', function(e){
+    magnifyClicked();
+    e.stopPropagation();
+  });
+  document.getElementById('lupaBtn').addEventListener('click', magnifyClicked);
+
+  // Clicking elsewhere hides tooltips and resets some highlights
+  svg.addEventListener('click', function(e){
+    // if clicked background, remove tooltip if any
+    if(magnifyTooltip && magnifyTooltip.parentNode) magnifyTooltip.parentNode.removeChild(magnifyTooltip);
+    magnifyTooltip = null;
+    // reset magnify highlight
+    const magParts = magnifiedContent.querySelectorAll('.magParticle');
+    magParts.forEach(p=> p.setAttribute('fill','#111'));
+  });
+
+  // Accessibility: keyboard toggles
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'm') motorClicked();
+    if(e.key === 'r') screenClicked();
+    if(e.key === 'l') magnifyClicked();
+  });
+
+  // Keep magnified view updated periodically (if particles changed)
+  setInterval(function(){
+    renderMagnifiedView();
+  }, 800);
+
+  // Ensure initial visual shows direction and collected area
+  // small arrow marker definition for flow arrow
+  (function defineArrow(){
+    const defs = svg.querySelector('defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    marker.setAttribute('id','arrow');
+    marker.setAttribute('markerWidth','10');
+    marker.setAttribute('markerHeight','10');
+    marker.setAttribute('refX','8');
+    marker.setAttribute('refY','3');
+    marker.setAttribute('orient','auto');
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M0,0 L6,3 L0,6 z');
+    path.setAttribute('fill','#0a6db0');
+    marker.appendChild(path);
+    defs.appendChild(marker);
+  })();
+
+})();
+</script>
+</body>
+</html>

@@ -12,10 +12,25 @@ const openai = new OpenAI({
 
 let lastGeneratedFolder = null;
 
+let mainWindow;
+let splash;
+
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 800,
+  splash = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: true,
+    transparent: true,
+  });
+  splash.loadFile(path.join(__dirname, "splash.html"));
+
+  mainWindow = new BrowserWindow({
+    fullscreen: true,
+    resizable: false,
+    frame: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -23,7 +38,12 @@ function createWindow() {
     },
   });
 
-  win.loadFile("index.html");
+  mainWindow.loadFile("index.html");
+
+  mainWindow.once("ready-to-show", () => {
+    splash.destroy();
+    mainWindow.show();
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -60,42 +80,42 @@ ipcMain.handle(
 
       - **"initial"**: Definiše početno vizuelno stanje objekata na ekranu — njihove pozicije, oblike, veličine, boje i raspored. Na osnovu ovog opisa generiši početni prikaz koristeći HTML canvas, SVG, ili biblioteke poput p5.js ili D3.js. Ovo je početna scena koju korisnik vidi pre nego što započne interakciju.
 
-      - **"interactions"**: Niz pravila koja definišu kako objekti reaguju na korisničke akcije. Svako pravilo sadrži sledeća polja:
+      - **"interactions"**: (opciono) Niz pravila koja definišu kako objekti reaguju na korisničke akcije. Svako pravilo sadrži sledeća polja:
         - **"if"**: Uslov koji aktivira pravilo (npr. klik na određeni objekat ili poziciju).
         - **"then_first"**: Akcija koja se izvršava pri prvom ispunjenju uslova (npr. promena boje, prikaz teksta).
         - **"then_next"**: Lista akcija koje se izvršavaju redosledno pri svakom sledećem aktiviranju istog uslova.
         - **"position"**: Početna pozicija objekta na ekranu, obično u koordinatama (x, y). Koristi se za precizno postavljanje interaktivnih elemenata.
         - **"style"**: Stilizacija objekta — uključuje vizuelne osobine poput boje, ivica, oblika i veličine. Koristi se za inicijalno renderovanje objekta.
 
-      Implementiraj mehanizam koji detektuje klikove i prati broj klikova po objektu kako bi pravilno menjao ponašanje kroz "then_first" i "then_next" sekvence.
+      Ako su prisutni, implementiraj mehanizam koji detektuje klikove i prati broj klikova po objektu kako bi pravilno menjao ponašanje kroz "then_first" i "then_next" sekvence.
 
-      - **"extras"**: Opcionalno polje sa dodatnim funkcionalnostima kao što su animacije, dodatne vizualizacije, pojavljivanje teksta, audio efekti, itd. Uključi ih kao dopune osnovnim ponašanjima, u skladu sa semantikom datih opisa.
+      - **"extras"**: (opciono) Opcionalno polje sa dodatnim funkcionalnostima kao što su animacije, dodatne vizualizacije, pojavljivanje teksta, audio efekti, itd. Uključi ih kao dopune osnovnim ponašanjima, u skladu sa semantikom datih opisa.
 
       Na kraju, generiši jedan ".html" dokument koji uključuje sve potrebne elemente (HTML, ugrađeni CSS, ugrađeni JavaScript), potpuno funkcionalan i spreman za lokalno otvaranje u pregledaču.
       Ne dodaj nikakve dodatne komentare, uvodne rečenice, objašnjenja ili tekst izvan HTML koda. Output mora sadržati isključivo jedan validan HTML dokument bez ikakvog zaglavlja, uvoda ili tumačenja.
       </instruction>`;
 
+    const content = {
+      title,
+      audience,
+      description,
+      initial,
+    };
+
+    if (Array.isArray(interactions) && interactions.length > 0) {
+      content.interactions = interactions;
+    }
+
+    if (extras && extras.trim() !== "") {
+      content.extras = extras;
+    }
+
     const userPrompt = `<content>
-      {
-        "title": "${title}",
-        "audience": "${audience}",
-        "description": "${description}",
-        "initial": "${initial}",
-        "interactions": ${JSON.stringify(interactions, null, 2)},
-        "extras": "${extras}"
-      }
-      </content>
-    `;
-
-    // const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-pro" });
-    // const result = await model.generateContent(prompt);
-    // const response = await result.response;
-    // const text = response.text();
-
-    // return text;
+    ${JSON.stringify(content, null, 2)}
+    </content>`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "system",
@@ -108,6 +128,51 @@ ipcMain.handle(
     return completion.choices[0].message.content;
   }
 );
+
+ipcMain.handle("generateDescriptionFromImage", async (event, { image }) => {
+  const systemPrompt = `
+  Generiši kratak i jasan opis scene na slici. 
+  Opis treba biti edukativan i razumljiv učenicima, fokusiran na elemente koji su vidljivi i interaktivni. 
+  Odgovor treba biti u jednoj kratkoj pasusu (3–4 rečenice), samo opis scene, bez komentara ili uputstava.
+  `;
+
+  const userPrompt = `Ovo je Base64 slika: ${image}. Napiši kratak tekstualni opis scene.`;
+
+  //   const userPrompt = `
+  // Ovo je Base64 slika: ${image}. Napiši kratak edukativni opis scene.
+  // Uključuj:
+  // - Sve vidljive objekte
+  // - Njihove osobine (boja, oblik, pozicija)
+  // - Interakcije ili ponašanje objekata
+  // Odgovor da bude u jednom paragrafu, samo opis scene, bez dodatnih komentara.
+  // `;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: userPrompt,
+          },
+          {
+            type: "image_url",
+            image_url: { url: image },
+          },
+        ],
+      },
+    ],
+  });
+
+  console.log("=== Generisani opis iz slike ===");
+  console.log(completion.choices[0].message.content);
+  console.log("================================");
+
+  return completion.choices[0].message.content;
+});
 
 // IPC za generisanje i snimanje
 ipcMain.handle("save-html", async (event, { html, title }) => {
@@ -149,4 +214,9 @@ ipcMain.handle("zip-html", async (event) => {
   zip.writeZip(zipPath);
 
   return zipPath;
+});
+
+ipcMain.handle("close-app", () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) win.close();
 });

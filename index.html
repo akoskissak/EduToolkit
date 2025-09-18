@@ -7,81 +7,208 @@
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
   <body>
+    <div id="imageModal" class="image-modal">
+      <div class="modal-body">
+        <img class="modal-content" id="modalImage" />
+        <span class="modal-text">Klik ispod da se zatvori</span>
+      </div>
+    </div>
+
+    <div id="exitModal" class="exit-modal">
+      <div class="exit-modal-content">
+        <p>Da li stvarno želiš da izađeš iz aplikacije?</p>
+        <div class="exit-modal-buttons">
+          <button id="confirmExit">Da</button>
+          <button id="cancelExit">Ne</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="alertModal" class="exit-modal">
+      <div class="exit-modal-content">
+        <p id="alertMessage">Ovo je poruka</p>
+        <div class="exit-modal-buttons">
+          <button id="closeAlert">OK</button>
+        </div>
+      </div>
+    </div>
+
     <div class="container">
       <h1>Generator interaktivnih obrazovnih alata</h1>
-      <div class="theme-switcher">
-        <i data-lucide="sun" class="theme-icon-left"></i>
-        <div class="theme-toggle" id="themeToggle">
-          <div class="knob"></div>
+      <div class="columns-wrapper">
+        <div class="form-section">
+          <div class="form-steps-wrapper">
+            <div class="toolbar">
+              <div class="theme-switcher">
+                <i data-lucide="sun" class="theme-icon-left"></i>
+                <div class="theme-toggle" id="themeToggle">
+                  <div class="knob"></div>
+                </div>
+                <i data-lucide="moon" class="theme-icon-right"></i>
+              </div>
+
+              <div class="exit-button-wrapper">
+                <button id="exitBtn" title="Zatvori aplikaciju">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-step active" id="step1">
+              <label
+                ><i data-lucide="book"></i>Naziv alata:
+                <span class="required">*</span></label
+              >
+              <input
+                id="title"
+                spellcheck="false"
+                placeholder="Unesite kratak i jasan naziv alata, npr. 'Arhimedov zakon' ili 'Eksperiment sa silama'"
+              />
+              <div class="error-message" id="error-title"></div>
+
+              <label
+                ><i data-lucide="align-left"></i>Opis koncepta:
+                <span class="required">*</span></label
+              >
+              <textarea
+                id="description"
+                spellcheck="false"
+                placeholder="Detaljno objasnite obrazovni koncept koji alat prikazuje i šta učenici treba da nauče, npr. 'Prikazuje kako sile deluju na telo u tečnosti i principe Arhimedovog zakona.'"
+                rows="3"
+              ></textarea>
+              <div class="error-message" id="error-description"></div>
+
+              <label
+                ><i data-lucide="users"></i>Ciljna grupa (razred, nivo):
+                <span class="required">*</span></label
+              >
+              <input
+                id="audience"
+                spellcheck="false"
+                placeholder="Navedite razred ili nivo učenika, npr. '6. razred osnovne škole' ili 'Srednja škola'"
+              />
+              <div class="error-message" id="error-audience"></div>
+
+              <div class="initial-preview-wrapper">
+                <div class="row top-row">
+                  <div class="initial-column">
+                    <div class="initial-column-wrapper">
+                      <label
+                        ><i data-lucide="monitor"></i>Početni prikaz:
+                        <span class="required">*</span></label
+                      >
+                    </div>
+                  </div>
+
+                  <div class="image-column">
+                    <div class="image-upload-wrapper">
+                      <label
+                        ><i data-lucide="image"></i>Dodaj sliku za opis:</label
+                      >
+                      <img id="sceneThumbnail" title="Pogledaj sliku" />
+
+                      <button type="button" id="selectImageBtn">
+                        Izaberi sliku
+                      </button>
+                      <input type="file" id="sceneImage" accept="image/*" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row bottom-row">
+                  <div class="initial-column">
+                    <textarea
+                      id="initial"
+                      spellcheck="false"
+                      placeholder="Opis vizuelnog početnog stanja alata, šta učenici prvo vide, npr. 'Prikazana je cev sa vodom i tri objekta A, B i C koji plutaju ili tonu.'"
+                      rows="3"
+                    ></textarea>
+                    <div class="error-message" id="error-initial"></div>
+                  </div>
+                  <div class="image-column">
+                    <div class="generated-description-wrapper">
+                      <textarea
+                        id="generatedDescription"
+                        spellcheck="false"
+                        placeholder="Opis scene će se pojaviti ovde..."
+                        rows="5"
+                        readonly
+                      ></textarea>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        title="Kopiraj tekst"
+                      >
+                        <i data-lucide="copy"></i>
+                      </button>
+                    </div>
+                    <div class="generate-wrapper">
+                      <div id="spinnerImage">
+                        <div class="loader"></div>
+                        <span>Generisanje opisa...</span>
+                      </div>
+                      <button type="button" id="generateFromImageBtn">
+                        <i data-lucide="circle-play"></i> Generiši opis iz slike
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-step" id="step2">
+              <label><i data-lucide="zap"></i>Interaktivna pravila:</label>
+              <div id="rulesContainer"></div>
+              <button type="button" class="addRule-button" onclick="addRule()">
+                <i data-lucide="plus" class="btn"></i> Dodaj pravilo
+              </button>
+
+              <label><i data-lucide="sticky-note"></i>Dodatne želje:</label>
+              <textarea
+                id="extras"
+                spellcheck="false"
+                placeholder="Ovde možete navesti dodatne elemente, kao što su animacije, boje, tekstualna objašnjenja, zvukovi ili druge interaktivnosti koje želite uključiti."
+                rows="2"
+              ></textarea>
+
+              <div class="button-row"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="resetBtn">
+              <i data-lucide="refresh-ccw"></i> Resetuj Formu
+            </button>
+
+            <div class="wizard-nav">
+              <button id="prevBtn">
+                <i data-lucide="arrow-left"></i> Nazad
+              </button>
+              <button id="nextBtn">
+                Dalje <i data-lucide="arrow-right"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <i data-lucide="moon" class="theme-icon-right"></i>
-      </div>
-      <label><i data-lucide="book"></i>Naziv alata:</label>
-      <input id="title" placeholder="npr. Arhimedov zakon" />
-      <div class="error-message" id="error-title"></div>
-
-      <label><i data-lucide="align-left"></i>Opis koncepta:</label>
-      <textarea
-        id="description"
-        placeholder="Objasnite koji koncept se prikazuje i šta treba učenici da nauče."
-        rows="3"
-      ></textarea>
-      <div class="error-message" id="error-description"></div>
-
-      <label><i data-lucide="users"></i>Ciljna grupa (razred, nivo):</label>
-      <input id="audience" placeholder="npr. 6. razred osnovne škole" />
-      <div class="error-message" id="error-audience"></div>
-
-      <label
-        ><i data-lucide="monitor"></i>Početni prikaz (šta se vidi na ekranu kada
-        se otvori alat):</label
-      >
-      <textarea
-        id="initial"
-        placeholder="npr. cev sa vodom i tri objekta A, B i C"
-        rows="2"
-      ></textarea>
-      <div class="error-message" id="error-initial"></div>
-
-      <label
-        ><i data-lucide="zap"></i>Interaktivna pravila (IF-THEN logika):</label
-      >
-      <div id="rulesContainer"></div>
-      <button type="button" class="addRule-button" onclick="addRule()">
-        <i data-lucide="plus" class="btn"></i> Dodaj pravilo
-      </button>
-
-      <label
-        ><i data-lucide="sticky-note"></i>Dodatne želje (animacije, tekst, boje,
-        objašnjenja itd.):</label
-      >
-      <textarea
-        id="extras"
-        placeholder="npr. animacija potapanja, tekst koji se pojavljuje, legenda..."
-        rows="2"
-      ></textarea>
-
-      <div class="button-row">
-        <div class="left-buttons">
-          <button id="generateBtn">
-            <i data-lucide="circle-play"></i> Generiši alat
-          </button>
-          <button id="downloadBtn">
-            <i data-lucide="download"></i> Preuzmi ZIP
-          </button>
+        <div class="preview-section">
+          <div class="preview">
+            <h2>Pregled alata:</h2>
+            <iframe id="preview"></iframe>
+          </div>
+          <div class="generate-tool-buttons">
+            <div id="spinnerTool">
+              <div class="loader"></div>
+              <span>Generisanje alata...</span>
+            </div>
+            <button id="generateBtn">
+              <i data-lucide="circle-play"></i> Generiši alat
+            </button>
+            <button id="downloadBtn">
+              <i data-lucide="download"></i> Preuzmi ZIP
+            </button>
+          </div>
         </div>
-        <button id="resetBtn">
-          <i data-lucide="refresh-ccw"></i> Resetuj Formu
-        </button>
       </div>
-
-      <div id="spinner">
-        <div class="loader"></div>
-        <span>Generisanje alata...</span>
-      </div>
-
-      <h2>Pregled alata:</h2>
-      <iframe id="preview"></iframe>
     </div>
 
     <script src="renderer.js"></script>
