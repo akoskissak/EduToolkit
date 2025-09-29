@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<title>Gde da izgradimo grad?</title>
+<style>
+  /* audience: osnovna škola */
+  :root{
+    --panel-width:320px;
+    --map-bg:#eef7ff;
+    --font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:var(--font-family);
+    background:linear-gradient(180deg,#f8fbff 0%, #ffffff 100%);
+    color:#0b2540;
+  }
+  .container{
+    display:flex;
+    height:100vh;
+    gap:12px;
+    padding:18px;
+    box-sizing:border-box;
+  }
+  .left{
+    flex:1;
+    min-width:300px;
+    background:var(--map-bg);
+    border-radius:12px;
+    padding:14px;
+    box-shadow:0 6px 18px rgba(10,30,60,0.06);
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+  }
+  h1{
+    margin:4px 0 8px 0;
+    font-size:22px;
+  }
+  p.description{
+    margin:0 0 12px 0;
+    color:#14324a;
+    font-size:14px;
+  }
+  .map-wrap{
+    flex:1;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    border-radius:8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.1));
+    padding:8px;
+  }
+  svg.map {
+    width:100%;
+    height:100%;
+    max-height:calc(100vh - 180px);
+    border-radius:6px;
+    background: linear-gradient(180deg,#cfefff 0%, #e9f8ff 60%);
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.04);
+  }
+
+  /* area styles */
+  .area{
+    stroke:#ffffffcc;
+    stroke-width:2;
+    cursor:pointer;
+    transition:filter .18s ease, transform .18s ease;
+  }
+  .area:hover{
+    filter:brightness(1.06) saturate(1.05);
+    transform: translateY(-2px);
+  }
+
+  /* river */
+  .river{
+    fill:url(#riverGrad);
+    stroke:#2b8fd9;
+    stroke-opacity:0.9;
+  }
+  /* mountain */
+  .mountain{
+    fill: #9ea3a9;
+    stroke:#6f767b;
+  }
+  /* forest */
+  .forest{
+    fill: url(#forestPattern);
+    stroke:#2b6a30;
+    stroke-width:1.5;
+  }
+
+  /* right panel */
+  .right{
+    width:var(--panel-width);
+    min-width:260px;
+    background:linear-gradient(180deg,#ffffff, #f6f9fb);
+    border-radius:12px;
+    padding:14px;
+    box-shadow:0 8px 20px rgba(10,30,60,0.06);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .panel-title{
+    font-weight:600;
+    color:#0b2540;
+    font-size:15px;
+    margin-bottom:6px;
+  }
+  .info{
+    flex:1;
+    background:linear-gradient(180deg,#f8fcff, #ffffff);
+    border-radius:8px;
+    padding:10px;
+    color:#12324a;
+    font-size:14px;
+    overflow:auto;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+  .info p{
+    margin:0 0 8px 0;
+    line-height:1.45;
+  }
+  .controls{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  button{
+    background:#1f78b4;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    box-shadow: 0 6px 12px rgba(31,120,180,0.18);
+  }
+  button.secondary{
+    background:transparent;
+    color:#1f78b4;
+    border:1px solid #cfe8fb;
+    box-shadow:none;
+    font-weight:600;
+  }
+  .hint{
+    font-size:12px;
+    color:#385a72;
+  }
+
+  /* animations styles */
+  .boat{
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+  }
+  .smoke{
+    fill: #d9dee3;
+    opacity:0.9;
+    mix-blend-mode:screen;
+  }
+  .logger{
+    fill:#6b3e17;
+    stroke:#3b200b;
+    stroke-width:0.8;
+  }
+  /* keyframes for logger axe swing */
+  @keyframes swing {
+    0%{ transform:rotate(-28deg); }
+    50%{ transform:rotate(-8deg); }
+    100%{ transform:rotate(-28deg); }
+  }
+  .axe{
+    transform-origin: 50% 12%;
+    animation: swing 0.9s ease-in-out infinite;
+  }
+
+  /* small responsive tweak */
+  @media (max-width:900px){
+    .container{flex-direction:column;}
+    .right{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="left">
+    <h1>Gde da izgradimo grad?</h1>
+    <p class="description">Ovaj alat omogućava učenicima da izaberu prirodne oblasti na interaktivnoj mapi i saznaju kako te oblasti utiču na razvoj grada i dostupne resurse. Svaka oblast je jasno definisana kao zaseban oblik sa sopstvenom bojom i tekstualnim objašnjenjem.</p>
+
+    <div class="map-wrap">
+      <!-- SVG map -->
+      <svg id="mapSVG" class="map" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="riverGrad" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#6ec6ff" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#2b8fd9" stop-opacity="0.9" />
+          </linearGradient>
+
+          <pattern id="forestPattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+            <rect width="60" height="60" fill="#2e7d32" />
+            <g transform="translate(6,8) scale(0.9)">
+              <path d="M8 28 L16 8 L24 28 Z" fill="#1b5e20"/>
+              <rect x="14" y="28" width="4" height="8" fill="#6b3e17"/>
+            </g>
+            <g transform="translate(36,28) scale(0.9)">
+              <path d="M8 28 L16 8 L24 28 Z" fill="#1b5e20"/>
+              <rect x="14" y="28" width="4" height="8" fill="#6b3e17"/>
+            </g>
+          </pattern>
+
+          <!-- simple boat shape -->
+          <g id="boatShape">
+            <path d="M0 0 L30 0 L26 8 L4 8 Z" fill="#f4a261" stroke="#cc7b44" stroke-width="1"/>
+            <rect x="12" y="-10" width="6" height="10" fill="#7f6bff" />
+          </g>
+
+        </defs>
+
+        <!-- background hills/land -->
+        <rect x="0" y="0" width="1000" height="650" fill="transparent"></rect>
+
+        <!-- Mountain area (left side) -->
+        <g id="mountainGroup" transform="translate(0,0)">
+          <polygon id="mountainArea" class="area mountain" points="80,420 180,220 280,420" />
+          <polygon class="area mountain" points="140,360 210,230 300,360" style="opacity:0.95"/>
+          <!-- small peaks -->
+          <g id="mountainExtras" transform="translate(0,0)">
+            <rect x="90" y="420" width="260" height="100" fill="transparent"></rect>
+          </g>
+        </g>
+
+        <!-- River area (bottom center, blue polygon winding) -->
+        <g id="riverGroup">
+          <path id="riverArea" class="area river" d="M200 480 C 300 430, 420 520, 540 470 C 660 420, 760 500, 880 460 L 880 540 L 200 540 Z" />
+          <!-- river path for motion -->
+          <path id="riverPath" d="M220 500 C 330 460, 450 520, 560 485 C 690 440, 760 495, 860 468" fill="none" stroke="transparent" />
+        </g>
+
+        <!-- Forest area (right side) -->
+        <g id="forestGroup">
+          <polygon id="forestArea" class="area forest" points="640,120 760,120 880,210 880,360 700,360 620,260" />
+          <!-- tree icons in area -->
+          <g id="trees" transform="translate(650,160)">
+            <g transform="translate(0,0)">
+              <path d="M20 50 L40 20 L60 50 Z" fill="#0b6623"/>
+              <rect x="34" y="50" width="4" height="12" fill="#6b3e17"/>
+            </g>
+            <g transform="translate(80,24) scale(0.95)">
+              <path d="M20 50 L40 20 L60 50 Z" fill="#0b6623"/>
+              <rect x="34" y="50" width="4" height="12" fill="#6b3e17"/>
+            </g>
+            <g transform="translate(30,60) scale(0.9)">
+              <path d="M20 50 L40 20 L60 50 Z" fill="#0b6623"/>
+              <rect x="34" y="50" width="4" height="12" fill="#6b3e17"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- labels -->
+        <g id="labels" font-size="14" fill="#07304a" font-weight="600">
+          <text x="190" y="440" fill="#ffffff" stroke="#0b2540" stroke-width="0.3" style="font-weight:700; font-size:14px">Planina</text>
+          <text x="360" y="520" fill="#fff" stroke="#0b2540" stroke-width="0.2" style="font-weight:700; font-size:14px">Reka</text>
+          <text x="760" y="200" fill="#fff" stroke="#0b2540" stroke-width="0.2" style="font-weight:700; font-size:14px">Šuma</text>
+        </g>
+
+        <!-- Dynamic animation layers (hidden initially) -->
+        <!-- Boat group (hidden) -->
+        <g id="boatGroup" class="boat" visibility="hidden">
+          <use href="#boatShape" id="boatShapeUse" transform="translate(-15,-8)"/>
+          <animateMotion id="boatMotion" href="#boatShapeUse" dur="6s" repeatCount="indefinite" fill="freeze" begin="indefinite">
+            <mpath href="#riverPath" />
+          </animateMotion>
+        </g>
+
+        <!-- Mountain smoke (hidden) -->
+        <g id="smokeGroup" visibility="hidden">
+          <g id="smokes" transform="translate(220,230)">
+            <ellipse class="smoke" cx="0" cy="0" rx="6" ry="4" opacity="0.9"/>
+            <ellipse class="smoke" cx="-12" cy="6" rx="5" ry="3" opacity="0.8"/>
+            <ellipse class="smoke" cx="12" cy="8" rx="4" ry="2.5" opacity="0.7"/>
+          </g>
+        </g>
+
+        <!-- Logger animation (hidden) -->
+        <g id="loggerGroup" visibility="hidden" transform="translate(720,240)">
+          <g id="loggerTree">
+            <rect x="-6" y="6" width="12" height="26" fill="#6b3e17" />
+            <path d="M-26 6 C-10 -10, 10 -10, 26 6 C10 -4, -10 -4, -26 6 Z" fill="#1b5e20" />
+          </g>
+          <g id="axe" class="axe" transform="translate(-6,-6) rotate(-28)">
+            <rect x="-3" y="-2" width="18" height="4" fill="#9e9e9e" />
+            <polygon points="15 -2 22 6 15 10" fill="#616161" />
+          </g>
+        </g>
+
+      </svg>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; justify-content:space-between;">
+      <div style="font-size:13px; color:#124055; font-weight:600">Izaberi oblast da vidiš mogućnosti razvoja grada</div>
+      <div style="font-size:12px; color:#235a7a">Klik na plavo, sivo ili zeleno</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel-title">Informacije o odabranoj oblasti</div>
+    <div id="infoPanel" class="info">
+      <p style="color:#2b5878; font-weight:600">Izaberi oblast na mapi (reka, planina ili šuma) da bi video/la koje resurse i izazove donosi ta lokacija.</p>
+    </div>
+    <div class="controls">
+      <div class="hint">Klik na oblast zumira mapu i prikazuje simbole.</div>
+      <div style="display:flex; gap:8px;">
+        <button id="resetBtn" class="secondary">Izaberi drugu oblast</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Elements
+  const svg = document.getElementById('mapSVG');
+  const riverArea = document.getElementById('riverArea');
+  const mountainArea = document.getElementById('mountainArea');
+  const forestArea = document.getElementById('forestArea');
+
+  const infoPanel = document.getElementById('infoPanel');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const boatGroup = document.getElementById('boatGroup');
+  const boatMotion = document.getElementById('boatMotion');
+  const boatShapeUse = document.getElementById('boatShapeUse');
+
+  const smokeGroup = document.getElementById('smokeGroup');
+  const smokes = document.getElementById('smokes');
+
+  const loggerGroup = document.getElementById('loggerGroup');
+  const axe = document.getElementById('axe');
+
+  // Original viewBox
+  let originalViewBox = svg.getAttribute('viewBox') || '0 0 1000 650';
+
+  // Click counters
+  const clicks = {
+    river: 0,
+    mountain: 0,
+    forest: 0
+  };
+
+  // Utility: set info text (clears others)
+  function setInfo(html){
+    infoPanel.innerHTML = '';
+    const p = document.createElement('p');
+    p.innerHTML = html;
+    infoPanel.appendChild(p);
+  }
+
+  // Utility: zoom to element bounding box with padding
+  function zoomToElement(el, padding = 40, duration = 450){
+    // get bbox in SVG coordinates
+    const bbox = el.getBBox();
+    const vb = originalViewBox.split(' ').map(Number);
+    const svgW = vb[2], svgH = vb[3];
+    const targetX = Math.max(0, bbox.x - padding);
+    const targetY = Math.max(0, bbox.y - padding);
+    const targetW = Math.min(svgW, bbox.width + padding*2);
+    const targetH = Math.min(svgH, bbox.height + padding*2);
+    const targetViewBox = [targetX, targetY, targetW, targetH];
+
+    // animate viewBox with requestAnimationFrame
+    const start = svg.getAttribute('viewBox').split(' ').map(Number);
+    const t0 = performance.now();
+    function step(t){
+      const p = Math.min(1,(t - t0)/duration);
+      const ease = p<0.5 ? 2*p*p : -1 + (4 - 2*p)*p; // easeInOutQuad approx
+      const cur = start.map((s,i) => s + (targetViewBox[i] - s)*ease);
+      svg.setAttribute('viewBox', cur.join(' '));
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function resetView(duration=350){
+    const start = svg.getAttribute('viewBox').split(' ').map(Number);
+    const target = originalViewBox.split(' ').map(Number);
+    const t0 = performance.now();
+    function step(t){
+      const p = Math.min(1,(t - t0)/duration);
+      const ease = p<0.5 ? 2*p*p : -1 + (4 - 2*p)*p;
+      const cur = start.map((s,i) => s + (target[i] - s)*ease);
+      svg.setAttribute('viewBox', cur.join(' '));
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Hide all animations & UI extras
+  function hideAllExtras(){
+    // boat
+    try {
+      boatMotion.pauseAnimations && boatMotion.pauseAnimations();
+    } catch(e){}
+    boatGroup.setAttribute('visibility','hidden');
+
+    // smoke
+    smokeGroup.setAttribute('visibility','hidden');
+    // remove any animated transform
+    smokes.querySelectorAll('ellipse').forEach((el)=>{
+      el.style.animation = '';
+      el.style.transform = '';
+      el.removeAttribute('transform');
+      el.removeAttribute('opacity');
+    });
+
+    // logger
+    loggerGroup.setAttribute('visibility','hidden');
+    axe.style.animation = 'none';
+  }
+
+  // River click behavior
+  riverArea.addEventListener('click', function(e){
+    e.stopPropagation();
+    const id = 'river';
+    const count = clicks[id];
+
+    if(count === 0){
+      // then_first: show text in right panel
+      setInfo("Grad pored reke – razvijeno ribarstvo, transport i trgovina. Nedostatak: drvo i kamen.");
+      // Zoom to river
+      zoomToElement(riverArea, 30, 450);
+      // Prepare but don't start boat yet
+      boatGroup.setAttribute('visibility','visible');
+      // position boat at start of river path by attaching to path (using mpath)
+      // start animation paused (will start on next click)
+      try { boatMotion.beginElement && boatMotion.beginElement(); } catch(e){}
+      // pause immediate animation by setting begin offset
+      boatMotion.setAttribute('begin','indefinite');
+    } else {
+      // then_next (first entry): add animated icon and change text
+      setInfo("Luka se razvija, ali nema dovoljno materijala za velike građevine.");
+      // start boat motion
+      boatGroup.setAttribute('visibility','visible');
+      try {
+        // restart animateMotion by removing and re-adding
+        boatMotion.setAttribute('begin','0s');
+        // use beginElement to start
+        if (typeof boatMotion.beginElement === 'function') {
+          boatMotion.beginElement();
+        }
+      } catch(e){}
+      // animate small bobbing of boat
+      boatGroup.style.transition = 'transform 0.6s ease-in-out';
+      boatGroup.style.transformOrigin = 'center';
+    }
+
+    clicks[id]++;
+  });
+
+  // Mountain click behavior
+  mountainArea.addEventListener('click', function(e){
+    e.stopPropagation();
+    const id = 'mountain';
+    const count = clicks[id];
+
+    if(count === 0){
+      setInfo("Planinski grad – dostupni su kamenolomi i rudnici. Nedostatak: voda i plodno zemljište.");
+      zoomToElement(mountainArea, 60, 450);
+      // prepare smoke (hidden)
+      smokeGroup.setAttribute('visibility','visible');
+      // initial small static smoke visual (will be animated next click)
+      // place smoke near peaks
+      const baseX = 190, baseY = 210;
+      smokes.setAttribute('transform','translate('+ (baseX) +','+ (baseY) +')');
+      // subtle initial opacity
+      smokes.querySelectorAll('ellipse').forEach((el,i)=>{
+        el.setAttribute('opacity', 0.65 - i*0.12);
+      });
+    } else {
+      setInfo("Industrija raste, ali razvoj je ograničen usled nepovoljnih uslova za poljoprivredu.");
+      // show smoke animation: rising and fading
+      smokeGroup.setAttribute('visibility','visible');
+      // animate each ellipse with JS loop
+      smokes.querySelectorAll('ellipse').forEach((el,idx)=>{
+        el.style.transition = 'none';
+        el.style.opacity = 0.95;
+        el.style.transformOrigin = 'center';
+        // reset any existing
+        el.style.transform = 'translateY(0) scale(1)';
+        // animate with stagger
+        const dur = 1400 + idx*300;
+        el.animate([
+          { transform: 'translateY(0) scale(0.9)', opacity: 0.9 },
+          { transform: 'translateY(-40px) scale(1.2)', opacity: 0.0 }
+        ], {
+          duration: dur,
+          iterations: Infinity,
+          easing: 'ease-out',
+          delay: idx*250
+        });
+      });
+    }
+
+    clicks[id]++;
+  });
+
+  // Forest click behavior
+  forestArea.addEventListener('click', function(e){
+    e.stopPropagation();
+    const id = 'forest';
+    const count = clicks[id];
+
+    if(count === 0){
+      setInfo("Šumski grad – dostupno drvo i lov, ali nedostaju kamen i trgovačke rute.");
+      zoomToElement(forestArea, 40, 450);
+      // prepare logger icon visible but not animated yet
+      loggerGroup.setAttribute('visibility','visible');
+      // ensure axe animation off
+      axe.style.animation = 'none';
+    } else {
+      setInfo("Grad raste sporo zbog loših veza sa ostalim oblastima.");
+      // start logger animation (chopping)
+      loggerGroup.setAttribute('visibility','visible');
+      axe.style.animation = 'swing 0.9s ease-in-out infinite';
+      // small tree shake by animating tree group
+      const tree = document.getElementById('loggerTree');
+      tree.animate([
+        { transform: 'translateY(0) rotate(0deg)' },
+        { transform: 'translateY(-2px) rotate(0deg)' },
+        { transform: 'translateY(0) rotate(0deg)' }
+      ], {
+        duration: 900,
+        iterations: Infinity,
+        easing: 'ease-in-out'
+      });
+    }
+
+    clicks[id]++;
+  });
+
+  // Reset button
+  resetBtn.addEventListener('click', function(){
+    // reset info panel to initial text
+    infoPanel.innerHTML = '<p style="color:#2b5878; font-weight:600">Izaberi oblast na mapi (reka, planina ili šuma) da bi video/la koje resurse i izazove donosi ta lokacija.</p>';
+    // reset click counts
+    clicks.river = clicks.mountain = clicks.forest = 0;
+    // hide animations/extras
+    hideAllExtras();
+    // restore view
+    resetView();
+  });
+
+  // Click on empty map to reset zoom but not clear info
+  svg.addEventListener('click', function(evt){
+    // If click target is background (not an area), reset view
+    const tgt = evt.target;
+    if(tgt === svg || tgt.tagName === 'rect'){
+      resetView();
+    }
+  });
+
+  // Initialize: hide extras
+  hideAllExtras();
+
+  // Accessibility: keyboard handling for areas (Enter key)
+  [riverArea, mountainArea, forestArea].forEach(el=>{
+    el.setAttribute('tabindex',0);
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){
+        el.dispatchEvent(new MouseEvent('click'));
+        e.preventDefault();
+      }
+    });
+  });
+
+  // Small helper: on first load ensure viewBox is set
+  if(!svg.getAttribute('viewBox')){
+    svg.setAttribute('viewBox', originalViewBox);
+  }
+
+})();
+</script>
+</body>
+</html>

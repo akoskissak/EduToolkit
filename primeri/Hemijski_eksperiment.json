@@ -1,0 +1,37 @@
+{
+  "title": "Hemijski eksperimenti",
+  "audience": "srednja škola, hemija",
+  "description": "Interaktivni alat koji simulira jednostavne hemijske reakcije u laboratoriji i prikazuje rezultate eksperimenta.",
+  "initial": "Na ekranu su staklene epruvete sa različitim supstancama i laboratorijska oprema. Dugmad omogućavaju dodavanje supstanci i zagrevanje.",
+  "interactions": [
+    {
+      "if": "klik na epruvetu sa kiselinom",
+      "then_first": "Prikaži tekst: 'Epruveta sadrži kiselinu.'",
+      "then_next": [
+        "Dodaj animaciju mehurića i promeni tekst na: 'Kiselina reaguje sa metalom.'"
+      ],
+      "position": "Epruveta sa leve strane laboratorijske klupe.",
+      "style": "Transparentna epruveta, panel sa tekstom iznad."
+    },
+    {
+      "if": "klik na epruvetu sa bazom",
+      "then_first": "Prikaži tekst: 'Epruveta sadrži bazu.'",
+      "then_next": [
+        "Dodaj animaciju mešanja supstance i promeni tekst na: 'Neutralizacija se dešava.'"
+      ],
+      "position": "Epruveta u sredini klupe.",
+      "style": "Baza animirana, panel sa tekstom sa strane."
+    },
+    {
+      "if": "klik na dugme za zagrevanje",
+      "then_first": "Prikaži tekst: 'Zagrevanje supstance.'",
+      "then_next": [
+        "Dodaj animaciju pare i promeni tekst na: 'Temperatura uzrokuje hemijsku reakciju.'"
+      ],
+      "position": "Dugme ispod epruveta.",
+      "style": "Animacija vatre i pare, panel sa opisom ispod."
+    }
+  ],
+  "extras": "Dugme 'Resetuj eksperiment' vraća supstance u početno stanje. Animacije prikazuju reakcije i mehuriće.",
+  "edit": "Dodaj boje supstanci koje menjaju nijansu prilikom reakcije i efekat mešanja u epruvetama."
+}

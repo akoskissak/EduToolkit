@@ -1,0 +1,543 @@
+<html lang="sr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hemijski eksperimenti</title>
+<style>
+  /* audience: srednja škola, hemija */
+  :root{
+    --bg:#f3f7fb;
+    --bench:#d9c6a3;
+    --glass-stroke:rgba(0,0,0,0.35);
+    --panel-bg:rgba(255,255,255,0.9);
+    --panel-border:rgba(0,0,0,0.12);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(#eef6ff,#f3f7fb);color:#111}
+  .container{max-width:1100px;margin:24px auto;padding:20px}
+  h1{margin:0 0 8px;font-size:28px;color:#16324f}
+  p.description{margin:0 0 18px;color:#243b4a;line-height:1.4}
+  .lab{
+    background:
+      linear-gradient(180deg,var(--bench) 0%, #cdbb99 40%),
+      radial-gradient(1200px 200px at 10% 10%, rgba(255,255,255,0.4), transparent 10%),
+      var(--bg);
+    border-radius:12px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(12,30,50,0.08);
+    position:relative;
+    overflow:hidden;
+  }
+  .workspace{display:flex;gap:24px;align-items:flex-end;padding:14px}
+  svg{width:100%;height:360px;display:block}
+  .left-panel{flex:1;min-width:0}
+  .right-panel{width:320px;flex-shrink:0}
+  .controls{display:flex;gap:12px;align-items:center;margin-top:12px}
+  button.btn{
+    background:linear-gradient(180deg,#fffb,#eee);
+    border:1px solid #bdbdbd;border-radius:8px;padding:8px 12px;
+    cursor:pointer;font-weight:600;color:#0b3a5a;box-shadow:0 2px 6px rgba(0,0,0,0.06)
+  }
+  button.btn.heat{background:linear-gradient(180deg,#ffd9b8,#ffb27a);border-color:#f08a3e}
+  button.btn.reset{background:linear-gradient(180deg,#f2f8ff,#dceeff);border-color:#80aeea}
+  .notes{background:var(--panel-bg);padding:10px;border-radius:8px;border:1px solid var(--panel-border);box-shadow:0 2px 6px rgba(12,30,50,0.03)}
+  .tube-label{font-size:13px;color:#07314c;margin-top:6px;text-align:center}
+  /* Panels for messages */
+  .panel-above{position:absolute;left:70px;top:18px;width:220px;background:var(--panel-bg);border:1px solid var(--panel-border);padding:8px;border-radius:8px;font-size:14px;color:#0e3347;box-shadow:0 6px 18px rgba(12,30,50,0.06)}
+  .panel-side{position:absolute;left:420px;top:110px;width:200px;background:var(--panel-bg);border:1px solid var(--panel-border);padding:8px;border-radius:8px;font-size:14px;color:#0e3347;box-shadow:0 6px 18px rgba(12,30,50,0.06)}
+  .panel-below{position:absolute;left:220px;top:320px;width:300px;background:var(--panel-bg);border:1px solid var(--panel-border);padding:8px;border-radius:8px;font-size:14px;color:#0e3347;box-shadow:0 6px 18px rgba(12,30,50,0.06)}
+  .msg-muted{color:#4b6b7a;font-size:13px}
+  /* Tube & liquid visuals */
+  .tube{cursor:pointer;transition:transform 160ms}
+  .tube:active{transform:translateY(2px)}
+  .glass{fill:transparent;stroke:var(--glass-stroke);stroke-width:3}
+  .liquid-acid{fill:#ff6b6b;opacity:0.92;transition:fill 600ms ease, transform 600ms ease}
+  .liquid-base{fill:#4aa3ff;opacity:0.94;transition:fill 600ms ease, transform 600ms ease}
+  .liquid-neutral{fill:#8ecf7a;opacity:0.9;transition:fill 600ms ease, transform 600ms ease}
+  .liquid-acid.react{fill:#e14b54}
+  .liquid-base.react{fill:#1f7be0}
+  .liquid-neutral.react{fill:#6fb05f}
+  .liquid-neutral.mixed{fill:#c3b26a;opacity:0.96}
+  /* bubble & steam container */
+  .bubble, .steam{pointer-events:none}
+  .bubble circle{fill:#fff3;stroke:#fff6;stroke-width:0.5}
+  /* bubble animation via JS (translateY + fade) */
+  .steam circle{fill:rgba(255,255,255,0.85)}
+  /* mixing/swirl */
+  .swirl{fill:none;stroke:rgba(255,255,255,0.7);stroke-width:3;stroke-linecap:round;opacity:0.0;transform-origin:center;transition:opacity 220ms}
+  .swirl.animate{opacity:0.95;animation:spin 900ms linear infinite}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  /* flame under tube */
+  .flame{opacity:0;transform-origin:center;transition:opacity 180ms}
+  .flame.on{opacity:1;animation:flameFlicker 400ms linear infinite}
+  @keyframes flameFlicker{0%{transform:translateY(0)}50%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+  /* subtle gradient overlay for mixing visuals inside tubes */
+  .mix-overlay{fill:url(#mixGradient);opacity:0;transition:opacity 450ms ease}
+  .mix-overlay.on{opacity:0.38}
+  /* small responsive */
+  @media (max-width:900px){
+    .right-panel{width:240px}
+    .panel-above{left:36px;width:180px}
+    .panel-side{left:300px}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Hemijski eksperimenti</h1>
+  <p class="description">Interaktivni alat koji simulira jednostavne hemijske reakcije u laboratoriji i prikazuje rezultate eksperimenta.</p>
+
+  <div class="lab" id="lab" style="box-shadow: rgba(12, 30, 50, 0.08) 0px 6px 18px;">
+    <div style="position:relative">
+      <div class="panel-above" id="acid-panel">Kliknite na epruvetu levo za informacije.</div>
+      <div class="panel-side" id="base-panel">Kliknite na srednju epruvetu za informacije.</div>
+      <div class="panel-below" id="heat-panel">Dugmad ispod: Zagrevanje i Reset.</div>
+    </div>
+
+    <div class="workspace">
+      <div class="left-panel" style="flex:1">
+        <!-- SVG lab scene -->
+        <svg id="lab-svg" viewBox="0 0 900 360" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="mixGradient" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/>
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="0.02"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- bench -->
+          <rect x="0" y="290" width="900" height="70" fill="#c9b08a" opacity="0.95"></rect>
+
+          <!-- left test tube (acid) at ~x=100 -->
+          <g id="tube-acid" class="tube" transform="translate(100,60)" tabindex="0">
+            <g id="acid-glass">
+              <!-- glass outline -->
+              <path class="glass" d="M40 0 L80 0 L80 160 Q80 170 70 170 L50 170 Q40 170 40 160 Z"></path>
+              <!-- slight inner glass -->
+              <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z" fill="rgba(255,255,255,0.02)"></path>
+              <!-- liquid shape -->
+              <clipPath id="clip-acid">
+                <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z"></path>
+              </clipPath>
+              <g clip-path="url(#clip-acid)">
+                <rect x="45" y="98" width="30" height="80" fill="#ff6b6b" class="liquid-acid" id="acid-liquid" rx="6"></rect>
+                <g id="acid-swirl" class="swirl">
+                  <path d="M60 120 C72 110 75 100 60 92"></path>
+                  <path d="M52 132 C64 122 68 112 52 104"></path>
+                </g>
+                <rect x="45" y="98" width="30" height="80" class="mix-overlay" id="acid-overlay" rx="6"></rect>
+                <!-- bubbles container -->
+                <g id="acid-bubbles" class="bubble"></g>
+              </g>
+            </g>
+            <!-- small metallic metal piece inside to react (visual) -->
+            <circle cx="60" cy="130" r="4" fill="#d0c0a0" opacity="0.8"></circle>
+          </g>
+
+          <!-- middle test tube (base) at ~x=360 -->
+          <g id="tube-base" class="tube" transform="translate(360,60)" tabindex="0">
+            <g id="base-glass">
+              <path class="glass" d="M40 0 L80 0 L80 160 Q80 170 70 170 L50 170 Q40 170 40 160 Z"></path>
+              <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z" fill="rgba(255,255,255,0.02)"></path>
+              <clipPath id="clip-base">
+                <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z"></path>
+              </clipPath>
+              <g clip-path="url(#clip-base)">
+                <rect x="45" y="86" width="30" height="92" fill="#4aa3ff" class="liquid-base" id="base-liquid" rx="6"></rect>
+                <g id="base-swirl" class="swirl">
+                  <path d="M60 120 C70 110 75 100 60 92"></path>
+                  <path d="M55 132 C65 122 68 112 55 104"></path>
+                </g>
+                <rect x="45" y="86" width="30" height="92" class="mix-overlay" id="base-overlay" rx="6"></rect>
+              </g>
+            </g>
+          </g>
+
+          <!-- right test tube neutral (visual only) at ~x=620 -->
+          <g id="tube-neutral" class="tube" transform="translate(620,60)">
+            <g id="neutral-glass">
+              <path class="glass" d="M40 0 L80 0 L80 160 Q80 170 70 170 L50 170 Q40 170 40 160 Z"></path>
+              <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z" fill="rgba(255,255,255,0.02)"></path>
+              <clipPath id="clip-neutral">
+                <path d="M44 6 L76 6 L76 154 Q76 158 70 158 L50 158 Q44 158 44 154 Z"></path>
+              </clipPath>
+              <g clip-path="url(#clip-neutral)">
+                <rect x="45" y="110" width="30" height="68" fill="#8ecf7a" class="liquid-neutral" id="neutral-liquid" rx="6"></rect>
+                <g id="neutral-swirl" class="swirl">
+                  <path d="M60 130 C68 120 72 110 60 102"></path>
+                  <path d="M53 140 C63 130 66 120 53 112"></path>
+                </g>
+                <rect x="45" y="110" width="30" height="68" class="mix-overlay" id="neutral-overlay" rx="6"></rect>
+              </g>
+            </g>
+          </g>
+
+          <!-- heat source (flame) under middle tube -->
+          <g id="heat-source" transform="translate(370,245)" class="">
+            <g class="on" id="flame-graphic">
+              <path d="M10 34 C12 26 22 22 22 12 C22 2 14 2 14 2 C12 8 6 10 6 18 C6 26 10 32 10 34 Z" fill="#ffb96a" style="filter: drop-shadow(rgba(255, 150, 60, 0.25) 0px 2px 6px);"></path>
+              <path d="M12 28 C14 22 18 20 18 12 C18 6 14 6 14 6 C13 10 10 12 10 18 C10 24 12 26 12 28 Z" fill="#ff6a3d"></path>
+            </g>
+          </g>
+
+          <!-- labels -->
+          <text x="100" y="248" font-size="13" fill="#063245" text-anchor="middle">Epruveta: Kiselina</text>
+          <text x="400" y="248" font-size="13" fill="#063245" text-anchor="middle">Epruveta: Baza</text>
+          <text x="660" y="248" font-size="13" fill="#063245" text-anchor="middle">Epruveta: Neutralno</text>
+
+          <!-- small tools on bench -->
+          <g transform="translate(20,270)" opacity="0.95">
+            <rect x="0" y="0" width="120" height="30" rx="6" fill="#b1a088"></rect>
+            <text x="60" y="20" text-anchor="middle" font-size="12" fill="#fff">Laboratorijska klupa</text>
+          </g>
+        </svg>
+
+        <div class="controls" style="margin-top:10px">
+          <button class="btn heat" id="btn-heat" tabindex="0">Dugme za zagrevanje</button>
+          <button class="btn reset" id="btn-reset" tabindex="0">Resetuj eksperiment</button>
+          <div style="flex:1"></div>
+          <div class="notes">
+            <div style="font-weight:700;margin-bottom:6px">Uputstvo</div>
+            <div class="msg-muted">Kliknite na epruvete da vidite opis, kliknite ponovo da pokrenete reakciju. Koristite dugme za zagrevanje za pokretanje pare.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="notes" style="margin-bottom:12px">
+          <div style="font-weight:700;margin-bottom:6px">Stanje eksperimenta</div>
+          <div id="status-log" class="msg-muted">Eksperiment je vraćen u početno stanje.</div>
+        </div>
+
+        <div class="notes">
+          <div style="font-weight:700;margin-bottom:6px">Kontrole</div>
+          <div style="font-size:13px;color:#294b60">- Kliknite na levu epruvetu: kiselina.<br>- Kliknite na srednju epruvetu: baza.<br>- Kliknite na "Dugme za zagrevanje" za toplinu.<br>- "Resetuj eksperiment" vraća početno stanje.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // State trackers for interactions
+  const state = {
+    acid: { clicks:0, nextIndex:0 },
+    base: { clicks:0, nextIndex:0 },
+    heat: { clicks:0, nextIndex:0 }
+  };
+
+  // Panels & elements
+  const acidPanel = document.getElementById('acid-panel');
+  const basePanel = document.getElementById('base-panel');
+  const heatPanel = document.getElementById('heat-panel');
+  const statusLog = document.getElementById('status-log');
+
+  const tubeAcid = document.getElementById('tube-acid');
+  const tubeBase = document.getElementById('tube-base');
+  const btnHeat = document.getElementById('btn-heat');
+  const btnReset = document.getElementById('btn-reset');
+
+  const acidBubblesGroup = document.getElementById('acid-bubbles');
+  const baseSwirl = document.getElementById('base-swirl');
+  const flameGraphic = document.getElementById('flame-graphic');
+
+  const acidSwirl = document.getElementById('acid-swirl');
+  const neutralSwirl = document.getElementById('neutral-swirl');
+
+  const acidLiquid = document.getElementById('acid-liquid');
+  const baseLiquid = document.getElementById('base-liquid');
+  const neutralLiquid = document.getElementById('neutral-liquid');
+
+  const acidOverlay = document.getElementById('acid-overlay');
+  const baseOverlay = document.getElementById('base-overlay');
+  const neutralOverlay = document.getElementById('neutral-overlay');
+
+  // timers
+  let acidBubbleTimer = null;
+  let steamTimer = null;
+  let steamGroup = null;
+
+  // Helpers
+  function logStatus(text){
+    statusLog.textContent = text;
+  }
+
+  function createBubble(x,y,r,delay,opacity){
+    const svgNS = "http://www.w3.org/2000/svg";
+    const c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx',x);
+    c.setAttribute('cy',y);
+    c.setAttribute('r',r);
+    c.setAttribute('fill','white');
+    c.setAttribute('opacity',opacity||0.85);
+    c.style.transition = 'transform 1200ms linear, opacity 1000ms linear';
+    acidBubblesGroup.appendChild(c);
+    // animate: move up and fade
+    requestAnimationFrame(() => {
+      c.style.transform = `translateY(-${40 + Math.random()*60}px)`;
+      c.style.opacity = '0';
+    });
+    // remove after
+    setTimeout(()=>{ if(c && c.parentNode) c.parentNode.removeChild(c); }, 1400);
+  }
+
+  function startAcidBubbles(){
+    if(acidBubbleTimer) return;
+    acidBubbleTimer = setInterval(()=>{
+      // random positions inside liquid area (x between 50-70, y between 110-150)
+      const x = 50 + Math.random() * 24;
+      const y = 120 + Math.random() * 30;
+      const r = 2 + Math.random()*3;
+      createBubble(x,y,r,0,0.9);
+    }, 220);
+    // visual: shade change and mixing overlay + swirl animation
+    acidLiquid.classList.add('react');
+    acidSwirl && acidSwirl.classList.add('animate');
+    acidOverlay && acidOverlay.classList.add('on');
+    updateNeutralMixing();
+  }
+  function stopAcidBubbles(){
+    if(acidBubbleTimer){ clearInterval(acidBubbleTimer); acidBubbleTimer = null; }
+    // clear existing bubbles
+    while(acidBubblesGroup.firstChild) acidBubblesGroup.removeChild(acidBubblesGroup.firstChild);
+    acidLiquid.classList.remove('react');
+    acidSwirl && acidSwirl.classList.remove('animate');
+    acidOverlay && acidOverlay.classList.remove('on');
+    updateNeutralMixing();
+  }
+
+  // Steam functions
+  function ensureSteamGroup(){
+    if(!steamGroup){
+      const svgNS = "http://www.w3.org/2000/svg";
+      steamGroup = document.createElementNS(svgNS,'g');
+      steamGroup.setAttribute('id','steam-group');
+      steamGroup.setAttribute('class','steam');
+      // place above middle tube
+      steamGroup.setAttribute('transform','translate(385,10)');
+      const svg = document.getElementById('lab-svg');
+      svg.appendChild(steamGroup);
+    }
+  }
+  function createSteam(){
+    ensureSteamGroup();
+    const svgNS = "http://www.w3.org/2000/svg";
+    const s = document.createElementNS(svgNS,'circle');
+    const cx = (Math.random()*40)-10;
+    const r = 6 + Math.random()*10;
+    s.setAttribute('cx',cx);
+    s.setAttribute('cy',150);
+    s.setAttribute('r',r);
+    s.setAttribute('fill','rgba(255,255,255,0.85)');
+    s.style.transition = 'transform 1200ms linear, opacity 1000ms linear';
+    steamGroup.appendChild(s);
+    requestAnimationFrame(()=>{
+      const up = 80 + Math.random()*60;
+      const drift = (-20 + Math.random()*40);
+      s.style.transform = `translate(${drift}px, -${up}px)`;
+      s.style.opacity = '0';
+      s.style.filter = 'blur(0.6px)';
+    });
+    setTimeout(()=>{ if(s && s.parentNode) s.parentNode.removeChild(s); }, 1400);
+  }
+  function startSteam(){
+    if(steamTimer) return;
+    steamTimer = setInterval(()=>{ createSteam(); }, 220);
+  }
+  function stopSteam(){
+    if(steamTimer){ clearInterval(steamTimer); steamTimer = null; }
+    if(steamGroup){
+      while(steamGroup.firstChild) steamGroup.removeChild(steamGroup.firstChild);
+      steamGroup.parentNode && steamGroup.parentNode.removeChild(steamGroup);
+      steamGroup = null;
+    }
+  }
+
+  // Neutral mixing logic: if both acid and base are actively reacting, show mixed color and swirl in neutral tube
+  function updateNeutralMixing(){
+    const acidActive = !!acidBubbleTimer;
+    const baseActive = baseSwirl && baseSwirl.classList.contains('animate');
+    if(acidActive && baseActive){
+      neutralLiquid.classList.add('mixed');
+      neutralOverlay && neutralOverlay.classList.add('on');
+      neutralSwirl && neutralSwirl.classList.add('animate');
+      logStatus("Neutralizacija: mešavina se stvara u neutralnoj epruveti.");
+    } else {
+      neutralLiquid.classList.remove('mixed');
+      neutralOverlay && neutralOverlay.classList.remove('on');
+      neutralSwirl && neutralSwirl.classList.remove('animate');
+    }
+  }
+
+  // Interaction definitions (IF -> THEN_FIRST, THEN_NEXT sequence)
+  // Acid tube
+  tubeAcid.addEventListener('click', ()=>{
+    const s = state.acid;
+    s.clicks++;
+    if(s.clicks === 1){
+      // then_first
+      acidPanel.textContent = "Epruveta sadrži kiselinu.";
+      logStatus("Otkriveno: epruveta sadrži kiselinu.");
+    } else {
+      // then_next sequential actions: add bubbles and change text
+      if(s.nextIndex === 0){
+        acidPanel.textContent = "Kiselina reaguje sa metalom.";
+        // start bubbles
+        startAcidBubbles();
+        logStatus("Reakcija: mehurići se stvaraju u epruveti sa kiselinom.");
+        s.nextIndex++;
+      } else {
+        // subsequent clicks repeat the reaction: toggle bubbles on/off (for interactivity)
+        if(acidBubbleTimer){
+          stopAcidBubbles();
+          acidPanel.textContent = "Mehurići su zaustavljeni (ponovo kliknite da pokrenete).";
+          logStatus("Mehurići zaustavljeni u kiselini.");
+        } else {
+          startAcidBubbles();
+          acidPanel.textContent = "Kiselina reaguje sa metalom.";
+          logStatus("Mehurići ponovo aktivni u kiselini.");
+        }
+      }
+    }
+  });
+
+  // Base tube
+  tubeBase.addEventListener('click', ()=>{
+    const s = state.base;
+    s.clicks++;
+    if(s.clicks === 1){
+      basePanel.textContent = "Epruveta sadrži bazu.";
+      logStatus("Otkriveno: epruveta sadrži bazu.");
+    } else {
+      if(s.nextIndex === 0){
+        basePanel.textContent = "Neutralizacija se dešava.";
+        // add mixing animation
+        baseSwirl.classList.add('animate');
+        // also slightly rotate the liquid for a brief swirl effect
+        baseLiquid.style.transition = 'transform 700ms ease';
+        baseLiquid.style.transformOrigin = '60px 120px';
+        baseLiquid.style.transform = 'rotate(6deg)';
+        setTimeout(()=>{ baseLiquid.style.transform = 'rotate(0deg)'; }, 700);
+        // shade change and overlay
+        baseLiquid.classList.add('react');
+        baseOverlay && baseOverlay.classList.add('on');
+        logStatus("Reakcija: mešanje i neutralizacija u toku.");
+        s.nextIndex++;
+        updateNeutralMixing();
+      } else {
+        // toggle swirl
+        if(baseSwirl.classList.contains('animate')){
+          baseSwirl.classList.remove('animate');
+          basePanel.textContent = "Mešanje zaustavljeno.";
+          baseLiquid.classList.remove('react');
+          baseOverlay && baseOverlay.classList.remove('on');
+          logStatus("Mešanje baze zaustavljeno.");
+        } else {
+          baseSwirl.classList.add('animate');
+          basePanel.textContent = "Neutralizacija se dešava.";
+          baseLiquid.classList.add('react');
+          baseOverlay && baseOverlay.classList.add('on');
+          logStatus("Mešanje ponovo aktivno; neutralizacija se dešava.");
+        }
+        updateNeutralMixing();
+      }
+    }
+  });
+
+  // Heat button
+  btnHeat.addEventListener('click', ()=>{
+    const s = state.heat;
+    s.clicks++;
+    if(s.clicks === 1){
+      heatPanel.textContent = "Zagrevanje supstance.";
+      logStatus("Zagrevanje supstance započeto.");
+      // small flame appear but without steam yet
+      flameGraphic.classList.add('on');
+      flameGraphic.parentNode && flameGraphic.parentNode.querySelector('.flame') && flameGraphic.setAttribute('class','');
+      // Show flame by toggling class on the group
+      const flameGroup = document.getElementById('flame-graphic').parentNode;
+      flameGroup.classList.add('on');
+      flameGroup.querySelector('#flame-graphic') && flameGroup.querySelector('#flame-graphic').classList && flameGroup.querySelector('#flame-graphic').classList.add('on');
+      flameGroup.classList.add('on');
+      flameGroup.classList.add('active');
+      // use CSS class
+      flameGroup.querySelector('#flame-graphic') && flameGroup.querySelector('#flame-graphic').classList && flameGroup.querySelector('#flame-graphic').classList.add('on');
+    } else {
+      if(s.nextIndex === 0){
+        heatPanel.textContent = "Temperatura uzrokuje hemijsku reakciju.";
+        // start steam animation above middle tube
+        startSteam();
+        // show visible flame
+        const flameGroup = document.getElementById('flame-graphic').parentNode;
+        flameGroup.classList.add('on');
+        flameGroup.querySelector('path').style.filter = 'drop-shadow(0 2px 6px rgba(255,150,60,0.25))';
+        logStatus("Zagrevanje: para se pojavljuje; temperatura uzrokuje reakciju.");
+        s.nextIndex++;
+      } else {
+        // toggle steam
+        if(steamTimer){
+          stopSteam();
+          heatPanel.textContent = "Pare su zaustavljene.";
+          logStatus("Zagrevanje: para prekinuta.");
+        } else {
+          startSteam();
+          heatPanel.textContent = "Temperatura uzrokuje hemijsku reakciju.";
+          logStatus("Zagrevanje: para ponovo aktivna.");
+        }
+      }
+    }
+  });
+
+  // Reset button
+  btnReset.addEventListener('click', resetExperiment);
+
+  function resetExperiment(){
+    // reset states
+    state.acid.clicks = 0; state.acid.nextIndex = 0;
+    state.base.clicks = 0; state.base.nextIndex = 0;
+    state.heat.clicks = 0; state.heat.nextIndex = 0;
+    // panels
+    acidPanel.textContent = "Kliknite na epruvetu levo za informacije.";
+    basePanel.textContent = "Kliknite na srednju epruvetu za informacije.";
+    heatPanel.textContent = "Dugmad ispod: Zagrevanje i Reset.";
+    // stop animations
+    stopAcidBubbles();
+    baseSwirl.classList.remove('animate');
+    baseLiquid.classList.remove('react');
+    baseOverlay && baseOverlay.classList.remove('on');
+    stopSteam();
+    // remove flame visuals
+    const flameGroup = document.getElementById('flame-graphic').parentNode;
+    flameGroup.classList.remove('on');
+    flameGroup.classList.remove('active');
+    // neutral revert
+    neutralLiquid.classList.remove('mixed');
+    neutralLiquid.classList.remove('react');
+    neutralOverlay && neutralOverlay.classList.remove('on');
+    neutralSwirl && neutralSwirl.classList.remove('animate');
+    // clear transforms
+    const baseLiquidEl = document.getElementById('base-liquid');
+    baseLiquidEl.style.transform = '';
+    // status
+    logStatus("Eksperiment je vraćen u početno stanje.");
+  }
+
+  // Minor initialization: ensure panels reflect initial state
+  resetExperiment();
+
+  // Accessibility: allow keyboard activation
+  tubeAcid.setAttribute('tabindex','0');
+  tubeBase.setAttribute('tabindex','0');
+  btnHeat.setAttribute('tabindex','0');
+  btnReset.setAttribute('tabindex','0');
+  tubeAcid.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') tubeAcid.click(); });
+  tubeBase.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') tubeBase.click(); });
+
+  // Extras: small periodic subtle bench shimmer for visual interest
+  (function benchShimmer(){
+    const lab = document.getElementById('lab');
+    let on=false;
+    setInterval(()=>{ lab.style.boxShadow = on ? '0 8px 18px rgba(12,30,50,0.06)' : '0 6px 18px rgba(12,30,50,0.08)'; on=!on; }, 3000);
+  })();
+</script>
+
+</body></html>

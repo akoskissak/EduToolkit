@@ -1,0 +1,28 @@
+{
+  "title": "Istrazimo Solarni sistem",
+  "audience": "osnovna i srednja škola, astronomija",
+  "description": "Interaktivni alat koji omogućava učenicima da klikom na planete saznaju osnovne informacije o njima, kao i prikaz orbitnih putanja i animacija.",
+  "initial": "Na ekranu je prikazan sunčev sistem sa Suncem u centru i planetama koje kruže oko njega. Svaka planeta ima svoju boju i veličinu, a orbitne putanje su jasno vidljive.",
+  "interactions": [
+    {
+      "if": "klik na Merkur",
+      "then_first": "Prikaži kratki opis: 'Merkur – najmanja planeta, najbliža Suncu, nema atmosfere.'",
+      "then_next": [
+        "Dodaj animaciju rotacije Merkura i promeni tekst na: 'Merkur se okreće sporo, dan traje 58 Zemljinih dana.'"
+      ],
+      "position": "Planeta Merkur, mala žuta sfera najbliža Suncu.",
+      "style": "Sfera sa blago sjajnom teksturom, panel sa opisom se pojavljuje ispod planeta."
+    },
+    {
+      "if": "klik na Jupiter",
+      "then_first": "Prikaži opis: 'Jupiter – najveća planeta, gasoviti div sa velikim crvenim pegama.'",
+      "then_next": [
+        "Dodaj animaciju njegovih prstenova i promeni tekst na: 'Jupiterova gravitacija utiče na ostale planete.'"
+      ],
+      "position": "Velika narandžasta sfera sa crvenim pegama, desno od centra.",
+      "style": "Sfera sa animiranim prstenovima, panel se pojavljuje pored planete."
+    }
+  ],
+  "extras": "Moguće je zumirati svaku planetu, prikazati orbitu i brzinu, a dugme 'Resetuj pogled' vraća planete u početni položaj.",
+  "edit": "Dodaj animaciju komete koja prolazi pored Marsa"
+}

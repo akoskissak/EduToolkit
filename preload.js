@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("api", {
   generateHTML: (data) => ipcRenderer.invoke("generate-html", data),
   saveHTML: (html, title) => ipcRenderer.invoke("save-html", { html, title }),
   zipHTML: () => ipcRenderer.invoke("zip-html"),
+  editTool: (html, instruction) =>
+    ipcRenderer.invoke("edit-tool", html, instruction),
   generateDescriptionFromImage: (data) =>
     ipcRenderer.invoke("generateDescriptionFromImage", data),
   closeApp: () => ipcRenderer.invoke("close-app"),

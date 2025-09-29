@@ -1,0 +1,457 @@
+<html lang="sr"><head>
+<meta charset="utf-8">
+<title>Simulacija fotosinteze u biljci</title>
+<style>
+  /* audience: osnovnoškolci i srednjoškolci */
+  body { font-family: Arial, Helvetica, sans-serif; background: linear-gradient(#e6f7ff, #ffffff); margin: 0; padding: 20px; color: #093145; }
+  h1 { margin: 0 0 8px 0; font-size: 28px; text-align: center; }
+  p.description { margin: 0 0 16px 0; text-align: center; color: #234; max-width: 900px; margin-left:auto; margin-right:auto; }
+  #stage { display: block; margin: 10px auto; border-radius: 8px; background: linear-gradient(#bfe9ff, #ffffff); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+  .clickable { cursor: pointer; }
+  .sun-core { filter: url(#sunGlow); transition: transform 0.2s ease; }
+  .sun-core:hover { transform: scale(1.05); }
+  .leaf { transition: fill 400ms ease, transform 400ms ease; transform-origin: center center; }
+  .leaf.dark { fill: #006400 !important; } /* tamnozeleno */
+  .leaf.vivid { fill: #00b300 !important; } /* živopisno zeleno */
+  .stem { stroke: #6b8e23; stroke-width: 8; stroke-linecap: round; fill: none; }
+  .water-drop { transition: transform 200ms ease; }
+  .water-drop:hover { transform: translateY(-4px); }
+  .msg { font-size: 16px; font-weight: bold; fill: #064; opacity: 0; transition: opacity 250ms ease; pointer-events:none; text-shadow: 0 1px 0 #fff;}
+  .smallMsg { font-size: 14px; fill: #1f3a3a; opacity: 0; transition: opacity 200ms ease; pointer-events:none; }
+  .ray { stroke: rgba(255,230,120,0.9); stroke-width: 3; stroke-linecap: round; opacity:0; }
+  .ray.animate { animation: rayPulse 1.2s ease-in-out infinite; opacity:1; }
+  @keyframes rayPulse {
+    0% { opacity: 0.15; transform: translateY(0) scale(1); }
+    50% { opacity: 1; transform: translateY(-6px) scale(1.02); }
+    100% { opacity: 0.15; transform: translateY(0) scale(1); }
+  }
+  .bubble { fill: rgba(173, 216, 230, 0.95); stroke: rgba(255,255,255,0.7); stroke-width:1; opacity:0.95; }
+  .bubble.rise { animation: riseBubble 2200ms linear forwards; }
+  @keyframes riseBubble {
+    0% { transform: translateY(0) scale(0.7); opacity: 0.95; }
+    60% { opacity: 0.8; }
+    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+  }
+  .drip { fill: #5cc0ff; opacity: 0.95; transform-origin: center; animation: dripFall 1000ms ease forwards; }
+  @keyframes dripFall {
+    0% { transform: translateY(0) scale(0.9); opacity:1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(170px) scale(0.6); opacity: 0; }
+  }
+  .plant-group { transition: transform 800ms ease; transform-origin: 400px 350px; }
+  .growLoop { animation: gentleGrow 3s ease-in-out infinite alternate; }
+  @keyframes gentleGrow {
+    from { transform: scale(1); }
+    to { transform: scale(1.03); }
+  }
+  /* tooltip style for small guidance */
+  #hint { font-size: 13px; color:#145; text-align:center; margin-top:8px; }
+  /* responsive */
+  @media (max-width: 900px) {
+    svg { width: 95vw; height: auto; }
+  }
+</style>
+</head>
+<body>
+  <h1>Simulacija fotosinteze u biljci</h1>
+  <p class="description">Ovaj interaktivni alat omogućava učenicima da vizuelno i kroz interakciju istraže proces fotosinteze. Klikajte na sunce da pojačate svetlost, na kap vode da hidrirate biljku i na listove da vidite oslobađanje kiseonika. Promene se odmah reflektuju kroz boje listova, nastanak kiseonika i rast biljke.</p>
+
+  <div style="text-align:center;">
+    <svg id="stage" width="900" height="520" viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="background: linear-gradient(rgb(255, 253, 231), rgb(255, 255, 255));">
+      <defs>
+        <filter id="sunGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="coloredBlur"></feGaussianBlur>
+          <feMerge>
+            <feMergeNode in="coloredBlur"></feMergeNode>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+          </feMerge>
+        </filter>
+        <radialGradient id="sunGrad" cx="35%" cy="30%">
+          <stop offset="0%" stop-color="#fff58f"></stop>
+          <stop offset="45%" stop-color="#ffe066"></stop>
+          <stop offset="100%" stop-color="#ffd11a"></stop>
+        </radialGradient>
+        <linearGradient id="leafGrad" x1="0" x2="1">
+          <stop offset="0%" stop-color="#b7f0a5"></stop>
+          <stop offset="100%" stop-color="#8fd36e"></stop>
+        </linearGradient>
+        <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#aee6ff"></stop>
+          <stop offset="100%" stop-color="#5cc0ff"></stop>
+        </linearGradient>
+      </defs>
+
+      <!-- Background subtle ground -->
+      <rect x="0" y="420" width="900" height="100" fill="url(#ground)" opacity="0.05"></rect>
+
+      <!-- Sun (upper left) -->
+      <g id="sunGroup" transform="translate(80,80)" class="clickable">
+        <circle id="sun" class="sun-core clickable" cx="0" cy="0" r="40" fill="url(#sunGrad)" stroke="#ffd54a" stroke-width="3" style="filter: url(&quot;#sunGlow&quot;); transform: scale(1.08);"></circle>
+      </g>
+
+      <!-- Light rays group (initially hidden) -->
+      <g id="rays" transform="translate(80,80)" pointer-events="none">
+        <!-- rays will be inserted dynamically -->
+      <line x1="10" y1="-10" x2="200" y2="40" class="ray animate"></line><line x1="-10" y1="-30" x2="220" y2="20" class="ray animate"></line><line x1="0" y1="40" x2="200" y2="160" class="ray animate"></line><line x1="30" y1="0" x2="220" y2="100" class="ray animate"></line><line x1="-20" y1="20" x2="180" y2="120" class="ray animate"></line></g>
+
+      <!-- Plant group in center -->
+      <g id="plantGroup" class="plant-group growLoop" transform="translate(0,0)" style="transform: scale(1.04);">
+        <!-- stem -->
+        <path class="stem" d="M400 420 Q400 360 400 330 Q398 310 410 300"></path>
+        <!-- leaves (light green, oval shapes) -->
+        <g id="leaves">
+          <ellipse id="leaf1" class="leaf clickable vivid" cx="360" cy="330" rx="50" ry="28" fill="#b7f0a5" transform="rotate(-25 360 330)"></ellipse>
+          <ellipse id="leaf2" class="leaf clickable vivid" cx="320" cy="360" rx="45" ry="24" fill="#b7f0a5" transform="rotate(-45 320 360)"></ellipse>
+          <ellipse id="leaf3" class="leaf clickable vivid" cx="440" cy="330" rx="50" ry="28" fill="#b7f0a5" transform="rotate(25 440 330)"></ellipse>
+          <ellipse id="leaf4" class="leaf clickable vivid" cx="480" cy="360" rx="45" ry="24" fill="#b7f0a5" transform="rotate(45 480 360)"></ellipse>
+          <ellipse id="leaf5" class="leaf clickable vivid" cx="400" cy="300" rx="52" ry="30" fill="#b7f0a5"></ellipse>
+        </g>
+        <!-- pot / soil -->
+        <g id="pot">
+          <rect x="330" y="420" width="140" height="44" rx="8" fill="#b97a3a" opacity="0.95"></rect>
+          <rect x="350" y="388" width="100" height="36" rx="6" fill="#8f5e34"></rect>
+        </g>
+      </g>
+
+      <!-- Water drop (slightly right of plant) -->
+      <g id="waterGroup" transform="translate(580,330)" class="clickable">
+        <path id="water" class="water-drop clickable" d="M0 -26 C12 -26 20 -10 20 0 C20 12 8 22 0 26 C-8 22 -20 12 -20 0 C-20 -10 -12 -26 0 -26 Z" fill="url(#waterGrad)" stroke="#3fb0ff" stroke-width="1.5"></path>
+      </g>
+
+      <!-- Messages -->
+      <text id="mainMsg" class="msg" x="450" y="70" text-anchor="middle" style="opacity: 0;">Biljka hidrira!</text>
+      <text id="smallMsg" class="smallMsg" x="450" y="100" text-anchor="middle" style="opacity: 0;">Kiseonik se oslobađa</text>
+
+    </svg>
+    <div id="hint">Kliknite na sunce, kap vode i listove da posmatrate reakcije.</div>
+  </div>
+
+<script>
+  const state = {
+    sun: { count: 0, nextIndex: 0, lightLevel: 0, raysCreated: false },
+    water: { count: 0, nextIndex: 0, hydrated: false },
+    leaves: {},
+    ignoreSun: 0,
+    ignoreWater: 0,
+    stress: { active: false, timer: null, stage: 0, maxStage: 4 }
+  };
+
+  const svg = document.getElementById('stage');
+  const sun = document.getElementById('sun');
+  const sunGroup = document.getElementById('sunGroup');
+  const raysGroup = document.getElementById('rays');
+  const water = document.getElementById('water');
+  const waterGroup = document.getElementById('waterGroup');
+  const plantGroup = document.getElementById('plantGroup');
+  const leavesGroup = document.getElementById('leaves');
+  const mainMsg = document.getElementById('mainMsg');
+  const smallMsg = document.getElementById('smallMsg');
+
+  const leafIds = ['leaf1','leaf2','leaf3','leaf4','leaf5'];
+
+  leafIds.forEach(id => {
+    state.leaves[id] = { count: 0, nextIndex: 0 };
+  });
+
+  function showMessage(text, duration=1600) {
+    mainMsg.textContent = text;
+    mainMsg.style.opacity = 1;
+    clearTimeout(mainMsg._to);
+    mainMsg._to = setTimeout(() => { mainMsg.style.opacity = 0; }, duration);
+  }
+  function showSmall(text, duration=1400) {
+    smallMsg.textContent = text;
+    smallMsg.style.opacity = 1;
+    clearTimeout(smallMsg._to);
+    smallMsg._to = setTimeout(() => { smallMsg.style.opacity = 0; }, duration);
+  }
+
+  function sunFirstAction() {
+    state.sun.lightLevel = Math.min(2, state.sun.lightLevel + 1);
+    leafIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.add('dark');
+      el.classList.remove('vivid');
+    });
+    sun.style.filter = 'url(#sunGlow)';
+    sun.style.transform = 'scale(1.08)';
+    showSmall('Svetlost pojačana', 1000);
+    svg.style.background = 'linear-gradient(#fffde7,#ffffff)';
+    checkGrowthCondition();
+    state.ignoreSun = 0;
+    stopStress();
+  }
+
+  function sunNextAction(index) {
+    if (index === 0) {
+      if (!state.sun.raysCreated) createRays();
+      document.querySelectorAll('#rays line').forEach((ln, i) => {
+        setTimeout(()=> ln.classList.add('animate'), i*80);
+      });
+      showSmall('',1);
+    } else if (index === 1) {
+      showMessage('Fotosinteza pojačana!', 1600);
+    } else {
+      sunPulse();
+    }
+    state.ignoreSun = 0;
+    stopStress();
+  }
+
+  function createRays() {
+    state.sun.raysCreated = true;
+    const rayCoords = [
+      {x1: 10,y1:-10,x2:200,y2:40},
+      {x1: -10,y1:-30,x2:220,y2:20},
+      {x1: 0,y1:40,x2:200,y2:160},
+      {x1: 30,y1:0,x2:220,y2:100},
+      {x1: -20,y1:20,x2:180,y2:120}
+    ];
+    rayCoords.forEach((rc) => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', rc.x1);
+      ln.setAttribute('y1', rc.y1);
+      ln.setAttribute('x2', rc.x2);
+      ln.setAttribute('y2', rc.y2);
+      ln.setAttribute('class','ray');
+      raysGroup.appendChild(ln);
+    });
+  }
+
+  function sunPulse() {
+    sun.style.transition = 'transform 120ms ease';
+    sun.style.transform = 'scale(1.12)';
+    setTimeout(()=> sun.style.transform = 'scale(1.06)', 150);
+  }
+
+  function waterFirstAction() {
+    state.water.hydrated = true;
+    leafIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.add('vivid');
+      el.classList.remove('dark');
+    });
+    plantGroup.style.transform = 'scale(1.04)';
+    showSmall('Biljka pije vodu', 1100);
+    checkGrowthCondition();
+    state.ignoreWater = 0;
+    stopStress();
+  }
+
+  function waterNextAction(index) {
+    if (index === 0) {
+      createDrip();
+    } else if (index === 1) {
+      showMessage('Biljka hidrira!', 1600);
+    } else {
+      waterGroup.animate([{transform:'translateY(0)'},{transform:'translateY(-6px)'},{transform:'translateY(0)'}],{duration:500});
+    }
+    state.ignoreWater = 0;
+    stopStress();
+  }
+
+  function createDrip() {
+    for (let i=0;i<3;i++) {
+      setTimeout(()=> {
+        const drop = document.createElementNS('http://www.w3.org/2000/svg','path');
+        drop.setAttribute('d','M0 -12 C6 -12 10 -5 10 0 C10 5 3 10 0 12 C-3 10 -10 5 -10 0 C-10 -5 -6 -12 0 -12 Z');
+        drop.setAttribute('class','drip');
+        const xOff = (Math.random()*40)-20;
+        drop.setAttribute('transform', `translate(${580 + xOff}, ${330 - 10})`);
+        svg.appendChild(drop);
+        setTimeout(()=> { drop.remove(); }, 1200);
+      }, i*220);
+    }
+  }
+
+  function leafFirstAction(leafId) {
+    spawnBubblesAtLeaf(leafId, 5, false);
+  }
+
+  function leafNextAction(leafId, index) {
+    if (index === 0) {
+      showSmall('Kiseonik se oslobađa', 1400);
+    } else if (index === 1) {
+      spawnBubblesAtLeaf(leafId, 8, true);
+    } else {
+      spawnBubblesAtLeaf(leafId, 6, true);
+      showSmall('Kiseonik se oslobađa', 1300);
+    }
+  }
+
+  function spawnBubblesAtLeaf(leafId, count=6, rising=true) {
+    const leaf = document.getElementById(leafId);
+    const bbox = leaf.getBBox();
+    const cx = bbox.x + bbox.width/2;
+    const cy = bbox.y + bbox.height/2;
+    for (let i=0;i<count;i++) {
+      setTimeout(()=> {
+        const b = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        const r = 6 + Math.random()*6;
+        const jitterX = (Math.random()*40)-20;
+        b.setAttribute('cx', cx + jitterX);
+        b.setAttribute('cy', cy + (Math.random()*20 - 6));
+        b.setAttribute('r', r);
+        b.setAttribute('class','bubble');
+        if (rising) b.classList.add('rise');
+        svg.appendChild(b);
+        if (!rising) {
+          b.animate([{transform:'scale(0.6)'},{transform:'scale(1.1)'},{opacity:0}], {duration:1400})
+          setTimeout(()=> b.remove(), 1400);
+        } else {
+          b.addEventListener('animationend', ()=> { b.remove(); });
+        }
+      }, i*140);
+    }
+  }
+
+  function checkGrowthCondition() {
+    if (state.sun.lightLevel >= 1 && state.water.hydrated) {
+      plantGroup.classList.add('growLoop');
+      showMessage('Rast biljke!', 1600);
+    }
+  }
+
+  function incrementIgnoreFor(actionSource) {
+    const threshold = 4;
+    if (actionSource === 'leaf' || actionSource === 'background') {
+      state.ignoreSun++;
+      state.ignoreWater++;
+    }
+    if (actionSource === 'leafOnly') {
+      state.ignoreSun++;
+      state.ignoreWater++;
+    }
+    if (state.ignoreSun >= threshold || state.ignoreWater >= threshold) {
+      startStress();
+    }
+  }
+
+  function startStress() {
+    if (state.stress.active) return;
+    state.stress.active = true;
+    state.stress.stage = 0;
+    const stages = ['#d9eaa0', '#e7d87a', '#f0cf55', '#f0c23a', '#e6b21a'];
+    state.stress.timer = setInterval(()=> {
+      state.stress.stage++;
+      const s = Math.min(state.stress.stage, state.stress.maxStage);
+      leafIds.forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('vivid');
+        el.classList.remove('dark');
+        el.style.setProperty('fill', stages[s], 'important');
+      });
+      showMessage('Fotosinteza slabi zbog nedostatka resursa.', 2200);
+      if (state.stress.stage >= state.stress.maxStage) {
+        clearInterval(state.stress.timer);
+        state.stress.timer = null;
+      }
+    }, 1200);
+  }
+
+  function stopStress() {
+    if (!state.stress.active) return;
+    state.stress.active = false;
+    if (state.stress.timer) {
+      clearInterval(state.stress.timer);
+      state.stress.timer = null;
+    }
+    leafIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.style.removeProperty('fill');
+      if (state.water.hydrated) {
+        el.classList.add('vivid');
+        el.classList.remove('dark');
+      } else if (state.sun.lightLevel > 0) {
+        el.classList.add('dark');
+        el.classList.remove('vivid');
+      } else {
+        el.classList.remove('vivid');
+        el.classList.remove('dark');
+      }
+    });
+  }
+
+  sunGroup.addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.sun.count++;
+    state.ignoreSun = 0;
+    if (state.water.hydrated === false) {
+      // clicking sun but no water doesn't hydrate; still reset ignoreSun
+    }
+    if (state.sun.count === 1) {
+      sunFirstAction();
+    } else {
+      const idx = state.sun.nextIndex;
+      const thenNext = ['radiation','message'];
+      if (idx < thenNext.length) {
+        sunNextAction(idx);
+        state.sun.nextIndex++;
+      } else {
+        sunNextAction(thenNext.length-1);
+      }
+    }
+  });
+
+  waterGroup.addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.water.count++;
+    state.ignoreWater = 0;
+    if (state.water.count === 1) {
+      waterFirstAction();
+    } else {
+      const idx = state.water.nextIndex;
+      const thenNext = ['drip','message'];
+      if (idx < thenNext.length) {
+        waterNextAction(idx);
+        state.water.nextIndex++;
+      } else {
+        waterNextAction(thenNext.length-1);
+      }
+    }
+  });
+
+  leafIds.forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const s = state.leaves[id];
+      s.count++;
+      incrementIgnoreFor('leaf');
+      if (s.count === 1) {
+        leafFirstAction(id);
+      } else {
+        const idx = s.nextIndex;
+        const thenNext = ['text','rise'];
+        if (idx < thenNext.length) {
+          leafNextAction(id, idx);
+          s.nextIndex++;
+        } else {
+          leafNextAction(id, thenNext.length-1);
+        }
+      }
+    });
+  });
+
+  leavesGroup.addEventListener('click', (e) => {
+  });
+
+  svg.addEventListener('click', (e)=> {
+    mainMsg.style.opacity = 0;
+    smallMsg.style.opacity = 0;
+    incrementIgnoreFor('background');
+  });
+
+  (function initScene() {
+    showSmall('Početno stanje: listovi svetlozeleni, sunce žuto, kap vode plava', 2000);
+    plantGroup.style.transform = 'scale(0.98)';
+    setTimeout(()=> { plantGroup.style.transform = 'scale(1)'; }, 300);
+  })();
+
+  setTimeout(()=> {
+    showSmall('Klikni na Sunce, Kap vode i List da vidiš efekte!', 2400);
+  }, 800);
+
+</script>
+
+</body></html>

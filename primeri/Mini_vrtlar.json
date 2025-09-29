@@ -1,0 +1,37 @@
+{
+  "title": "Mini vrtlar",
+  "audience": "osnovna škola, biologija/botanika",
+  "description": "Interaktivni alat koji omogućava učenicima da sade biljke, zalivaju ih i prate njihov rast u različitim uslovima svetlosti i tla.",
+  "initial": "Na ekranu je prikazan mali vrt sa nekoliko saksija. Dugmad omogućavaju odabir biljke, zalivanje i podešavanje svetla i temperature.",
+  "interactions": [
+    {
+      "if": "klik na saksiju sa semenom",
+      "then_first": "Prikaži tekst: 'Seme posađeno! Počelo je klijanje.'",
+      "then_next": [
+        "Dodaj animaciju malih izdanaka i promeni tekst na: 'Biljka raste, ali joj treba više vode.'"
+      ],
+      "position": "Saksije u donjem delu ekrana, jasno raspoređene.",
+      "style": "Saksije sa semenom su vidljive, panel sa tekstom iznad saksija."
+    },
+    {
+      "if": "klik na dugme za zalivanje",
+      "then_first": "Prikaži tekst: 'Biljke su zalivene.'",
+      "then_next": [
+        "Dodaj animaciju kapljica vode i promeni tekst na: 'Biljke brzo rastu, ali previše vode može ih oštetiti.'"
+      ],
+      "position": "Dugme sa desne strane ekrana.",
+      "style": "Kapljice vode animirane, panel sa opisom pored dugmeta."
+    },
+    {
+      "if": "klik na dugme za sunčevu svetlost",
+      "then_first": "Prikaži tekst: 'Biljke dobijaju svetlost.'",
+      "then_next": [
+        "Dodaj animaciju sunčevih zraka i promeni tekst na: 'Biljke rastu zdravije, listovi postaju zeleniji.'"
+      ],
+      "position": "Dugme sa leve strane ekrana.",
+      "style": "Sunčevi zraci animirani, panel sa opisom iznad dugmeta."
+    }
+  ],
+  "extras": "Dugme 'Resetuj vrt' vraća sve biljke i saksije u početno stanje. Animacije prikazuju različite faze rasta biljaka.",
+  "edit": "Dodaj cvetove koji se otvaraju kada biljka dostigne određenu visinu i poboljšaj vizuelni dizajn saksija i tla."
+}

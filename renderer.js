@@ -251,7 +251,11 @@ function initWizard() {
   const steps = document.querySelectorAll(".form-step");
   const nextBtn = document.getElementById("nextBtn");
   const prevBtn = document.getElementById("prevBtn");
+  const chatBtn = document.getElementById("chatBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const importBtn = document.getElementById("importBtn");
   const generateButtons = document.querySelector(".generate-tool-buttons");
+  const preview = document.getElementById("preview");
 
   function showStep(step) {
     steps.forEach((s, i) => {
@@ -265,7 +269,31 @@ function initWizard() {
     });
 
     prevBtn.style.display = step === 1 ? "none" : "inline-flex";
-    nextBtn.style.display = step === steps.length ? "none" : "inline-flex";
+
+    if (step === 3) {
+      nextBtn.style.display = "none";
+      chatBtn.style.display = "none";
+      resetBtn.style.display = "none";
+      importBtn.style.display = "none";
+    } else if (step === 1) {
+      nextBtn.style.display = "inline-flex";
+      resetBtn.style.display = "inline-flex";
+      importBtn.style.display = "inline-flex";
+      chatBtn.style.display = "none";
+    } else if (step === 2) {
+      const previewHasContent = preview.src.trim() !== "";
+      if (previewHasContent) {
+        chatBtn.style.display = "inline-flex";
+        resetBtn.style.display = "inline-flex";
+        nextBtn.style.display = "none";
+        importBtn.style.display = "none";
+      } else {
+        nextBtn.style.display = "none";
+        chatBtn.style.display = "none";
+        resetBtn.style.display = "inline-flex";
+        importBtn.style.display = "none";
+      }
+    }
 
     if (step === 2) {
       generateButtons.classList.remove("fade-out");
@@ -325,8 +353,19 @@ function initWizard() {
 
   nextBtn.addEventListener("click", () => goToStep(currentStep + 1));
   prevBtn.addEventListener("click", () => goToStep(currentStep - 1));
+  chatBtn.addEventListener("click", () => goToStep(3));
 
   showStep(currentStep);
+
+  const observer = new MutationObserver(() => {
+    if (preview.src.trim() !== "" && currentStep === 2) {
+      chatBtn.style.display = "inline-flex";
+    } else {
+      chatBtn.style.display = "none";
+    }
+  });
+
+  observer.observe(preview, { attributes: true, attributeFilter: ["src"] });
 }
 
 // ---------------- Image upload i generisanje opisa ----------------
@@ -454,4 +493,125 @@ function showAlert(message) {
   closeAlert.onclick = () => {
     alertModal.classList.remove("active");
   };
+}
+
+const chatInput = document.getElementById("chatInput");
+const chatMessages = document.getElementById("chatMessages");
+const sendChat = document.getElementById("sendChat");
+
+sendChat.addEventListener("click", async () => {
+  const instruction = chatInput.value.trim();
+  if (!instruction) return;
+
+  const previewIframe = document.getElementById("preview");
+  const html = previewIframe.contentDocument
+    ? previewIframe.contentDocument.documentElement.outerHTML
+    : previewIframe.srcdoc || "";
+
+  chatMessages.innerHTML += `
+    <div class="chat-bubble user-msg">
+      <div class="msg-text">${instruction}</div>
+    </div>
+  `;
+  chatInput.value = "";
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  chatInput.disabled = true;
+  sendChat.disabled = true;
+
+  const spinnerId = "spinner-" + Date.now();
+  chatMessages.innerHTML += `
+    <div class="chat-bubble gpt-msg" id="${spinnerId}">
+      <div class="msg-text">
+        <div class="loader"></div> Generisanje alata...
+      </div>
+    </div>
+  `;
+  try {
+    let newHtml = await window.api.editTool({ html, instruction });
+    newHtml = newHtml.replace(/^```html\s*/, "");
+    newHtml = newHtml.replace(/\s*```$/, "");
+
+    let title = document.getElementById("title").value.trim();
+
+    lastFilePath = await window.api.saveHTML(newHtml, title);
+    document.getElementById("preview").src = lastFilePath;
+    const spinnerEl = document.getElementById(spinnerId);
+    if (spinnerEl) {
+      spinnerEl.innerHTML = `<div class="msg-text">✅ Alat ažuriran.</div>`;
+    }
+  } catch (err) {
+    const spinnerEl = document.getElementById(spinnerId);
+    if (spinnerEl) {
+      spinnerEl.innerHTML = `<div class="msg-text">❌ Greška: ${err.message}</div>`;
+    }
+  } finally {
+    chatInput.disabled = false;
+    sendChat.disabled = false;
+    chatInput.focus();
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+});
+
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendChat.click();
+  }
+});
+
+const importBtn = document.getElementById("importBtn");
+const jsonInput = document.getElementById("jsonInput");
+
+importBtn.addEventListener("click", () => jsonInput.click());
+
+jsonInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      renderTool(data);
+    } catch (err) {
+      alert("Nevalidan JSON fajl!");
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+});
+
+// funkcija za renderovanje podataka iz JSON-a
+function renderTool(data) {
+  document.getElementById("title").value = data.title || "";
+  document.getElementById("audience").value = data.audience || "";
+  document.getElementById("description").value = data.description || "";
+  document.getElementById("initial").value = data.initial || "";
+  document.getElementById("extras").value = data.extras || "";
+
+  const container = document.getElementById("rulesContainer");
+  container.innerHTML = "";
+  ruleId = 0;
+
+  if (data.interactions && Array.isArray(data.interactions)) {
+    data.interactions.forEach((interaction) => {
+      addRule({
+        if: interaction.if || "",
+        then_first: interaction.then_first || "",
+        position: interaction.position || "",
+        style: interaction.style || "",
+      });
+
+      const currentRule = container.querySelector(`[data-id="${ruleId - 1}"]`);
+      const thenNextContainer = currentRule.querySelector(".thenNextContainer");
+      if (interaction.then_next && Array.isArray(interaction.then_next)) {
+        interaction.then_next.forEach((next) => {
+          addNextClick(thenNextContainer.nextElementSibling);
+          const inputs = thenNextContainer.querySelectorAll(".thenNext");
+          inputs[inputs.length - 1].value = next;
+        });
+      }
+    });
+  }
 }

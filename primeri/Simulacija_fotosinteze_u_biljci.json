@@ -1,0 +1,40 @@
+{
+  "title": "Simulacija fotosinteze u biljci",
+  "audience": "osnovnoškolci i srednjoškolci",
+  "description": "Ovaj interaktivni alat omogućava učenicima da vizuelno i kroz interakciju istraže proces fotosinteze. Alat prikazuje biljku, sunce i listove, a korisnik može klikom na sunce ili listove menjati intenzitet svetlosti i prisustvo vode. Promene se odmah reflektuju kroz boje listova, nastanak kiseonika i rast biljke, što pomaže učenicima da shvate kako svetlost i voda utiču na fotosintezu.",
+  "initial": "Na ekranu je prikazana biljka sa nekoliko listova u sredini, sunce u gornjem levom uglu i kap vode pored biljke. Listovi su svetlozeleni, sunce je žuto, kap vode plava. Sve je postavljeno tako da korisnik odmah vidi osnovni odnos svetlosti, vode i biljke.",
+  "interactions": [
+    {
+      "if": "klik na sunce",
+      "then_first": "pojačaj svetlost i učini listove tamnozelenim",
+      "then_next": [
+        "dodaj zračenje koje animira kretanje svetlosnih zraka",
+        "prikazi mali tekst 'Fotosinteza pojačana!'"
+      ],
+      "position": "sunce u gornjem levom uglu ekrana",
+      "style": "krug žute boje koji simbolizuje sunce"
+    },
+    {
+      "if": "klik na kap vode",
+      "then_first": "listovi postaju živopisno zeleni, biljka raste za malu visinu",
+      "then_next": [
+        "dodaj animaciju kapanja vode ka listovima",
+        "prikazi tekst 'Biljka hidrira!'"
+      ],
+      "position": "kap vode pored biljke, blago desno",
+      "style": "kap plave boje koja simbolizuje vodu"
+    },
+    {
+      "if": "klik na list",
+      "then_first": "prikaži mehuriće kiseonika kako izlaze iz lista",
+      "then_next": [
+        "prikazi tekst 'Kiseonik se oslobađa'",
+        "mehurići se podižu i nestaju"
+      ],
+      "position": "listovi raspoređeni po sredini biljke",
+      "style": "listovi svetlozeleni, blago ovalnog oblika"
+    }
+  ],
+  "extras": "Dodata je animacija rasta biljke kada su svetlost i voda adekvatni, mehurići kiseonika izlaze i nestaju iz listova, prikaz svetlosnih zraka pri jačem suncu. Alat kombinuje boje, animacije i tekstualne indikacije da učenici vizuelno shvate interakciju svetlosti i vode u fotosintezi.",
+  "edit": "Simulacija nedostatka resursa, ako korisnik više puta ignoriše vodu ili sunce, listovi polako požutei pokaže se poruka: \"Fotosinteza slabi zbog nedostatka resursa.\""
+}

@@ -173,13 +173,32 @@
 
               <div class="button-row"></div>
             </div>
+
+            <div class="form-step" id="step3">
+              <label
+                ><i data-lucide="edit-2"></i> Chat za editovanje alata:</label
+              >
+              <div class="chat-wrapper">
+                <div id="chatMessages" class="chat-messages"></div>
+
+                <div class="chat-input-area">
+                  <textarea
+                    id="chatInput"
+                    placeholder="Unesiti izmene ovde..."
+                    rows="1"
+                  ></textarea>
+                  <button type="button" id="sendChat">
+                    <i data-lucide="send"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="form-actions">
             <button id="resetBtn">
               <i data-lucide="refresh-ccw"></i> Resetuj Formu
             </button>
-
             <div class="wizard-nav">
               <button id="prevBtn">
                 <i data-lucide="arrow-left"></i> Nazad
@@ -187,7 +206,19 @@
               <button id="nextBtn">
                 Dalje <i data-lucide="arrow-right"></i>
               </button>
+              <button id="chatBtn">
+                Chat <i data-lucide="arrow-right"></i>
+              </button>
             </div>
+            <button id="importBtn">
+              <i data-lucide="file-json"></i> Import JSON
+            </button>
+            <input
+              type="file"
+              id="jsonInput"
+              accept=".json"
+              style="display: none"
+            />
           </div>
         </div>
         <div class="preview-section">

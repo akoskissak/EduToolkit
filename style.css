@@ -194,10 +194,6 @@ textarea::placeholder {
   display: flex;
 }
 
-.wizard-nav button {
-  min-width: 100px;
-}
-
 button {
   padding: 10px 16px;
   border: none;
@@ -601,6 +597,16 @@ body.dark button {
   color: #eee;
 }
 
+body.dark .user-msg {
+  background: rgba(255, 255, 255, 0.1);
+  color: #eee;
+}
+
+body.dark .gpt-msg {
+  background: rgba(255, 150, 255, 0.1);
+  color: #eee;
+}
+
 body.dark button:hover {
   background: rgba(255, 255, 255, 0.2);
 }
@@ -841,4 +847,98 @@ body.dark .theme-toggle .knob {
   #initial {
     min-height: 26vh;
   }
+}
+
+.chat-wrapper {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  height: 400px;
+  padding: 10px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 54vh;
+}
+
+.chat-bubble .loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 18px;
+}
+
+/* poruke */
+.user-msg {
+  align-self: flex-end;
+  padding: 15px 17px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom-right-radius: 4px;
+}
+
+.gpt-msg {
+  align-self: flex-start;
+  padding: 15px 17px;
+  border-radius: 18px;
+  background: rgba(0, 150, 0, 0.05);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gpt-msg.error {
+  background: #ffe5e5;
+  color: #b00020;
+}
+
+#chatInput {
+  font-family: inherit;
+  font-size: 1.1em;
+  flex: 1;
+  resize: none;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 0px;
+}
+
+#sendChat {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wizard-nav {
+  gap: 12px;
+}
+
+#importBtn {
+  margin-left: auto;
 }
