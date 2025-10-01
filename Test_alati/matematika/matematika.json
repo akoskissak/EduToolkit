@@ -1,0 +1,31 @@
+{
+  "title": "Interaktivno iscrtavanje trigonometrijske funkcije",
+  "audience": "srednjoškolci",
+  "description": "Ovaj interaktivni alat omogućava učenicima da vizuelno istraže trigonometrijske funkcije. Korisnik može menjati parametre funkcije (amplitudu, frekvenciju i fazni pomeraj), a graf se automatski osvežava. Na taj način učenici bolje razumeju kako promene parametara utiču na oblik funkcije.",
+  "initial": "Na ekranu je prikazan koordinatni sistem i osnovna funkcija y = sin(x). Funkcija je u plavoj boji, amplituda je 1, frekvencija 1, a fazni pomeraj 0. Ispod grafa nalaze se klizači za podešavanje parametara.",
+  "interactions": [
+    {
+      "if": "pomeranje klizača 'Amplituda'",
+      "then_first": "graf se ponovo iscrta sa novom amplitudom (y = A * sin(x))",
+      "then_next": ["funkcija postaje viša ili niža u zavisnosti od vrednosti"],
+      "position": "kontrole ispod grafa",
+      "style": "horizontalni klizač sa oznakom A"
+    },
+    {
+      "if": "pomeranje klizača 'Frekvencija'",
+      "then_first": "graf se ponovo iscrta sa novom frekvencijom (y = sin(B * x))",
+      "then_next": ["talasi se zgušnjavaju ili razređuju na x-osi"],
+      "position": "kontrole ispod grafa",
+      "style": "horizontalni klizač sa oznakom B"
+    },
+    {
+      "if": "pomeranje klizača 'Fazni pomeraj'",
+      "then_first": "graf se pomera ulevo ili udesno (y = sin(x + C))",
+      "then_next": ["funkcija se horizontalno translira"],
+      "position": "kontrole ispod grafa",
+      "style": "horizontalni klizač sa oznakom C"
+    }
+  ],
+  "extras": "Kombinacijom promena parametara učenici mogu istražiti složenije oblike trigonometrijskih funkcija. Alat koristi glatke animacije prilikom prelaska grafa iz jedne konfiguracije u drugu, a boje i mreža koordinatnog sistema pomažu u lakšem razumevanju vizuelnih promena.",
+  "edit": "Promeni boju grafa iz plave u crvenu i dodaj glatku animaciju prelaza pri promeni parametara."
+}

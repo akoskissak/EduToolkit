@@ -1,0 +1,38 @@
+{
+  "title": "Vizualizacija životinjske ćelije",
+  "audience": "osnovnoškolci i srednjoškolci",
+  "description": "Ovaj interaktivni alat omogućava učenicima da istraže unutrašnju strukturu životinjske ćelije. Na ekranu se prikazuje jednostavan model ćelije sa njenim osnovnim komponentama. Klikom na svaku komponentu otvara se prozorčić (popup) sa kratkim objašnjenjem o njenoj ulozi u funkcionisanju ćelije.",
+  "initial": "Na ekranu je prikazana velika kružna ćelija sa jasno obojenim organelama: plavi nukleus u centru, zelena mitohondrija sa strane, žuti endoplazmatski retikulum oko jezgra i mala crvena telašca koja predstavljaju lizozome. Sve je raspoređeno tako da učenici odmah vide osnovne delove ćelije.",
+  "interactions": [
+    {
+      "if": "klik na nukleus",
+      "then_first": "otvori popup sa tekstom 'Nukleus je kontrolni centar ćelije. On čuva DNK i reguliše rad ćelije.'",
+      "then_next": ["istakni nukleus plavim sjajem"],
+      "position": "centralni deo ćelije",
+      "style": "plavi krug sa dvostrukom membranom"
+    },
+    {
+      "if": "klik na mitohondriju",
+      "then_first": "otvori popup sa tekstom 'Mitohondrije proizvode energiju za ćeliju, poznate i kao energetske centrale.'",
+      "then_next": ["dodaj animaciju talasanja koje simbolizuje energiju"],
+      "position": "raspoređene po citoplazmi, bočno",
+      "style": "ovalni oblik sa unutrašnjim naborima, zelene boje"
+    },
+    {
+      "if": "klik na endoplazmatski retikulum",
+      "then_first": "otvori popup sa tekstom 'Endoplazmatski retikulum pomaže u sintezi proteina i lipida.'",
+      "then_next": ["naglasite ga žutim sjajem"],
+      "position": "oko jezgra, razgranata struktura",
+      "style": "žute cevčice povezane u mrežu"
+    },
+    {
+      "if": "klik na lizozom",
+      "then_first": "otvori popup sa tekstom 'Lizozomi razgrađuju otpadne materije u ćeliji.'",
+      "then_next": ["animiraj kratko pulsiranje crvene boje"],
+      "position": "nasumično raspoređeni u citoplazmi",
+      "style": "mali crveni krugovi"
+    }
+  ],
+  "extras": "Dodate su animacije sjaja, pulsiranja i talasanja da naglase funkciju organela. Popup prozorčići sadrže kratak tekst prilagođen uzrastu učenika. Alat kombinuje boje, oblike i animacije kako bi se jasno razlikovale komponente i učenici lakše razumeli uloge unutar ćelije.",
+  "edit": "Promeni boju jezgra da bude ljubičasta umesto plava i dodaj animaciju rotiranja jezgra."
+}

@@ -62,7 +62,7 @@
               <input
                 id="title"
                 spellcheck="false"
-                placeholder="Unesite kratak i jasan naziv alata, npr. 'Arhimedov zakon' ili 'Eksperiment sa silama'"
+                placeholder="Unesite naziv alata, npr. 'Simulacija fotosinteze'"
               />
               <div class="error-message" id="error-title"></div>
 
@@ -73,7 +73,7 @@
               <textarea
                 id="description"
                 spellcheck="false"
-                placeholder="Detaljno objasnite obrazovni koncept koji alat prikazuje i šta učenici treba da nauče, npr. 'Prikazuje kako sile deluju na telo u tečnosti i principe Arhimedovog zakona.'"
+                placeholder="Unesite kratak i jasan opis alata koji će se prikazati kao opis alata, npr. 'Prikazuje proces fotosinteze i kako biljke proizvode hranu.'"
                 rows="3"
               ></textarea>
               <div class="error-message" id="error-description"></div>
@@ -85,7 +85,7 @@
               <input
                 id="audience"
                 spellcheck="false"
-                placeholder="Navedite razred ili nivo učenika, npr. '6. razred osnovne škole' ili 'Srednja škola'"
+                placeholder="Unesite razred ili nivo učenika, npr. 'Osnovna škola, 6. razred' ili 'Srednja škola'"
               />
               <div class="error-message" id="error-audience"></div>
 
@@ -103,12 +103,13 @@
                   <div class="image-column">
                     <div class="image-upload-wrapper">
                       <label
-                        ><i data-lucide="image"></i>Dodaj sliku za opis:</label
+                        ><i data-lucide="image"></i>Dodajte sliku za
+                        opis:</label
                       >
                       <img id="sceneThumbnail" title="Pogledaj sliku" />
 
                       <button type="button" id="selectImageBtn">
-                        Izaberi sliku
+                        Izaberite sliku
                       </button>
                       <input type="file" id="sceneImage" accept="image/*" />
                     </div>
@@ -120,7 +121,7 @@
                     <textarea
                       id="initial"
                       spellcheck="false"
-                      placeholder="Opis vizuelnog početnog stanja alata, šta učenici prvo vide, npr. 'Prikazana je cev sa vodom i tri objekta A, B i C koji plutaju ili tonu.'"
+                      placeholder="Unesite detaljan početni vizuelni prikaz alata, npr. 'Prikazana je biljka sa listovima i sunčevim zracima za simulaciju fotosinteze.'"
                       rows="3"
                     ></textarea>
                     <div class="error-message" id="error-initial"></div>
@@ -167,7 +168,7 @@
               <textarea
                 id="extras"
                 spellcheck="false"
-                placeholder="Ovde možete navesti dodatne elemente, kao što su animacije, boje, tekstualna objašnjenja, zvukovi ili druge interaktivnosti koje želite uključiti."
+                placeholder="Unesite dodatne elemente ili interaktivnosti, npr. animacije, zvukove ili boje."
                 rows="2"
               ></textarea>
 

@@ -1,0 +1,40 @@
+{
+  "title": "Interaktivni istorijski vremenski pregled",
+  "audience": "osnovnoškolci i srednjoškolci",
+  "description": "Ovaj interaktivni alat omogućava učenicima da istraže hronologiju važnih istorijskih događaja. Na ekranu je prikazana horizontalna vremenska linija, a na njoj označene tačke predstavljaju događaje. Klikom na tačku učenik dobija prozorčić sa osnovnim informacijama i slikovnim prikazom.",
+  "initial": "Na ekranu se vidi horizontalna linija podeljena po vekovima. Na nekoliko mesta postavljene su tačke različitih boja koje označavaju događaje: otkriće Amerike, Francuska revolucija, Prvi svetski rat i Drugi svetski rat. Iznad linije stoji naslov 'Važni događaji svetske istorije'.",
+  "interactions": [
+    {
+      "if": "klik na tačku '1492 – Otkriće Amerike'",
+      "then_first": "otvori popup sa tekstom 'Kristofor Kolumbo je 1492. otkrio Ameriku, što je označilo početak novog doba istraživanja i kolonizacije.'",
+      "then_next": ["prikaži malu ilustraciju broda na vodi"],
+      "position": "leva strana vremenske linije",
+      "style": "plava tačka sa godinom 1492"
+    },
+    {
+      "if": "klik na tačku '1789 – Francuska revolucija'",
+      "then_first": "otvori popup sa tekstom 'Francuska revolucija počela je 1789. i donela velike društvene i političke promene u Evropi.'",
+      "then_next": ["prikaži malu ilustraciju francuske zastave"],
+      "position": "sredina vremenske linije",
+      "style": "crvena tačka sa godinom 1789"
+    },
+    {
+      "if": "klik na tačku '1914 – Prvi svetski rat'",
+      "then_first": "otvori popup sa tekstom 'Prvi svetski rat trajao je od 1914. do 1918. i obuhvatio je većinu svetskih sila.'",
+      "then_next": ["dodaj kratku animaciju eksplozije kao simbol rata"],
+      "position": "desna sredina vremenske linije",
+      "style": "siva tačka sa godinom 1914"
+    },
+    {
+      "if": "klik na tačku '1939 – Drugi svetski rat'",
+      "then_first": "otvori popup sa tekstom 'Drugi svetski rat trajao je od 1939. do 1945. i bio je najveći oružani sukob u istoriji.'",
+      "then_next": [
+        "prikaži ilustraciju globusa sa strelicama koje označavaju sukobe"
+      ],
+      "position": "desni kraj vremenske linije",
+      "style": "crna tačka sa godinom 1939"
+    }
+  ],
+  "extras": "Alat koristi boje i simbole kako bi se događaji jasno razlikovali. Popup prozorčići sadrže sažet tekst i ilustraciju, što pomaže učenicima da vizuelno povežu događaje sa njihovim značenjem. Vremenska linija je interaktivna, pregledna i omogućava učenicima da istražuju istorijske prekretnice na zanimljiv način.",
+  "edit": "Dodaj novu tačku na timeline: 1989 – Pad Berlinskog zida, sa sivom tačkom i popup objašnjenjem događaja. Takođe dodaj reset dugme koji resetuje sve dugmice"
+}

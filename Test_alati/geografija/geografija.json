@@ -1,0 +1,36 @@
+{
+  "title": "Gde podići novi grad?",
+  "audience": "geografija, osnovna škola",
+  "description": "Ovaj interaktivni alat pomaže učenicima da istraže kako različiti prirodni predeli oblikuju razvoj gradova. Klikom na određenu oblast, prikazuju se objašnjenja i vizuelne animacije koje prikazuju dostupne resurse i prepreke za izgradnju grada.",
+  "initial": "Prikazana je jednostavna mapa sa tri jasno označene oblasti: plava površina predstavlja reku, siva površina planinu, a zelena površina šumu. Iznad mape stoji uputstvo: 'Klikni na oblast i otkrij kako ona utiče na razvoj grada'.",
+  "interactions": [
+    {
+      "if": "korisnik klikne na plavu oblast (reka)",
+      "then_first": "U desnom panelu prikaži tekst: 'Grad uz reku pruža mogućnosti za ribolov, trgovinu i transport. Nedostatak: nema dovoljno drveta i kamena za gradnju.'",
+      "then_next": [
+        "Dodaj animaciju broda koji plovi rekom i zameni tekst sa: 'Luka se širi, ali izgradnja velikih objekata je ograničena zbog manjka materijala.'"
+      ],
+      "position": "Plava oblast se nalazi u donjem delu prikaza, izdvojena i dostupna za klik.",
+      "style": "Plava oblast sa blagim prelazima boje i jasno ucrtanim ivicama. Tekst se prikazuje u posebnom panelu sa desne strane."
+    },
+    {
+      "if": "korisnik klikne na sivu oblast (planina)",
+      "then_first": "U desnom panelu prikaži tekst: 'Planinski grad ima kamenolome i rudnike. Nedostatak: nedovoljno vode i plodnog zemljišta.'",
+      "then_next": [
+        "Dodaj animaciju dima koji izlazi iz rudnika i izmeni tekst: 'Industrija napreduje, ali poljoprivreda je otežana zbog terena i klime.'"
+      ],
+      "position": "Siva oblast sa trouglastim vrhovima smeštena na levoj strani mape.",
+      "style": "Siva površina sa jasnim konturama. Tekstualni panel se osvežava sa desne strane ekrana."
+    },
+    {
+      "if": "korisnik klikne na zelenu oblast (šuma)",
+      "then_first": "U desnom panelu prikaži tekst: 'Šumski grad ima obilje drveta i mogućnost lova, ali nema kamen i dobre trgovačke puteve.'",
+      "then_next": [
+        "Dodaj animaciju drvoseče i izmeni tekst: 'Grad raste sporo jer je slabo povezan sa ostalim oblastima.'"
+      ],
+      "position": "Zelena oblast sa ikonama drveća smeštena na desnoj strani mape.",
+      "style": "Zelena površina sa teksturom drveća. Panel za tekst se pojavljuje na desnoj strani ekrana."
+    }
+  ],
+  "extras": "Klik na bilo koju oblast zumira mapu na tu regiju. Dugme 'Povratak na mapu' vraća prikaz na početno stanje i uklanja animacije i tekst. Nemoj dodati dodatna objašnjenja."
+}

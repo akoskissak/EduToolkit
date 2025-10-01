@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Interaktivni istorijski vremenski pregled</title>
+<style>
+  /* audience: osnovnoškolci i srednjoškolci */
+  :root{
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --line:#3b4a6b;
+    --muted:#6b7280;
+    --popup-shadow: 0 8px 20px rgba(50,60,80,0.12);
+    --accent: #2b6cb0;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(180deg,#f3f6fb 0%, #ffffff 100%);
+    color:#123;
+  }
+  .wrap{
+    max-width:1100px;
+    margin:22px auto;
+    padding:18px;
+  }
+  header{
+    text-align:center;
+    margin-bottom:14px;
+  }
+  h1{
+    margin:0;
+    font-size:26px;
+    color:var(--line);
+  }
+  p.description{
+    margin:10px auto 24px;
+    max-width:900px;
+    color:#243142;
+    line-height:1.45;
+    text-align:center;
+  }
+  .timeline-card{
+    background:var(--card);
+    border-radius:12px;
+    padding:18px;
+    box-shadow: var(--popup-shadow);
+  }
+  .instructions{
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+    margin-bottom:12px;
+  }
+  /* SVG container */
+  .svg-wrap{
+    width:100%;
+    height:260px;
+    display:block;
+  }
+  .center-label{
+    text-anchor:middle;
+    font-size:18px;
+    fill:var(--line);
+    font-weight:600;
+  }
+  .century-label{
+    font-size:12px;
+    fill:#4b5563;
+  }
+  .tick{
+    stroke:#cbd5e1;
+    stroke-width:1;
+  }
+  .timeline-line{
+    stroke:var(--line);
+    stroke-width:4;
+    stroke-linecap:round;
+  }
+  .event-dot{
+    cursor:pointer;
+    stroke:#fff;
+    stroke-width:2;
+    transition: transform .12s ease, filter .12s ease;
+    filter: drop-shadow(0 2px 6px rgba(30,40,60,0.12));
+  }
+  .event-dot:hover{ transform:scale(1.12); }
+  .event-label{
+    font-size:12px;
+    fill:#0f1724;
+    pointer-events:none;
+    font-weight:600;
+  }
+
+  /* Popup */
+  .popup{
+    position:absolute;
+    min-width:220px;
+    max-width:360px;
+    background:var(--card);
+    border-radius:10px;
+    padding:12px;
+    box-shadow: var(--popup-shadow);
+    z-index:30;
+    display:none;
+    transform-origin: top left;
+  }
+  .popup.show{ display:block; animation: pop .12s ease-out; }
+  @keyframes pop{
+    from{ transform: scale(.96); opacity:0;}
+    to{ transform: scale(1); opacity:1;}
+  }
+  .popup h3{
+    margin:0 0 8px;
+    font-size:16px;
+    color:var(--line);
+  }
+  .popup p{
+    margin:0 0 10px;
+    color:#243142;
+    font-size:14px;
+    line-height:1.35;
+  }
+  .popup .illustration{
+    width:100%;
+    height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .popup .controls{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+  }
+  .btn{
+    border:0;
+    background:#eef2ff;
+    color:var(--accent);
+    padding:6px 10px;
+    border-radius:8px;
+    font-weight:600;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .btn:active{ transform:translateY(1px); }
+
+  /* explosion animation */
+  .explode {
+    width:90px;
+    height:90px;
+    position:relative;
+  }
+  .blast {
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%) scale(.2);
+    border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #ffd166, #ff7b7b);
+    opacity:0.0;
+    animation: blastAnim 900ms ease-out forwards;
+  }
+  @keyframes blastAnim {
+    0% { opacity:0; transform:translate(-50%,-50%) scale(.2); filter:blur(6px); }
+    30% { opacity:1; transform:translate(-50%,-50%) scale(1.05); filter:blur(0); }
+    100% { opacity:0; transform:translate(-50%,-50%) scale(1.8); filter:blur(4px); }
+  }
+
+  /* globe arrows rotate */
+  .globe-wrap{
+    width:120px;
+    height:120px;
+    display:inline-block;
+    position:relative;
+    transform-origin:center;
+  }
+  .arrow-anim{
+    animation: rotateArrows 6s linear infinite;
+    transform-origin:center;
+  }
+  @keyframes rotateArrows{
+    from{ transform:rotate(0deg); } to{ transform:rotate(360deg); }
+  }
+
+  /* small footer legend */
+  .legend{
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    color:#394151;
+    font-size:13px;
+    align-items:center;
+  }
+  .legend .item{ display:flex; gap:6px; align-items:center; }
+  .swatch{ width:14px; height:14px; border-radius:50%; display:inline-block; border:1px solid rgba(0,0,0,0.06); }
+
+  /* responsive */
+  @media (max-width:520px){
+    .svg-wrap{ height:320px; }
+    .popup{ left:8px !important; right:8px !important; top:auto; bottom:12px; max-width:calc(100% - 40px); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Važni događaji svetske istorije</h1>
+    <p class="description">Ovaj interaktivni alat omogućava učenicima da istraže hronologiju važnih istorijskih događaja. Kliknite na tačke duž vremenske linije da dobijete sažet opis i malu ilustraciju koja pomaže da bolje zapamtite svaki događaj.</p>
+  </header>
+
+  <div class="timeline-card" id="timelineCard">
+    <div class="instructions">Klikni na tačku da otvoriš informacije. Klikni ponovo za ilustraciju ili animaciju.</div>
+
+    <svg id="timelineSVG" class="svg-wrap" viewBox="0 0 1000 260" preserveAspectRatio="xMidYMid meet">
+      <!-- centuries ticks -->
+      <defs>
+        <linearGradient id="seaGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#a8d0ff"/>
+          <stop offset="100%" stop-color="#7ab1ff"/>
+        </linearGradient>
+      </defs>
+
+      <g transform="translate(40,40)">
+        <text x="460" y="10" class="center-label">Vremenska linija podeljena po vekovima</text>
+
+        <!-- baseline -->
+        <line x1="10" x2="900" y1="140" y2="140" class="timeline-line" />
+
+        <!-- ticks every 100 years from 1400 to 2000 -->
+        <!-- positions computed across 890 length -->
+        <g id="ticks">
+          <!-- dynamic via static placements below -->
+          <line class="tick" x1="10" x2="10" y1="132" y2="148"></line>
+          <text class="century-label" x="10" y="160">1400</text>
+
+          <line class="tick" x1="192" x2="192" y1="132" y2="148"></line>
+          <text class="century-label" x="192" y="160">1500</text>
+
+          <line class="tick" x1="374" x2="374" y1="132" y2="148"></line>
+          <text class="century-label" x="374" y="160">1600</text>
+
+          <line class="tick" x1="556" x2="556" y1="132" y2="148"></line>
+          <text class="century-label" x="556" y="160">1700</text>
+
+          <line class="tick" x1="738" x2="738" y1="132" y2="148"></line>
+          <text class="century-label" x="738" y="160">1800</text>
+
+          <line class="tick" x1="920" x2="920" y1="132" y2="148"></line>
+          <text class="century-label" x="920" y="160">1900</text>
+        </g>
+
+        <!-- Event dots -->
+        <!-- 1492 - left -->
+        <g id="event-1492" class="event" transform="translate(120,140)" cursor="pointer" tabindex="0">
+          <circle class="event-dot" r="12" fill="#1e90ff"></circle>
+          <text class="event-label" x="0" y="-20" text-anchor="middle">1492</text>
+        </g>
+
+        <!-- 1789 - middle -->
+        <g id="event-1789" class="event" transform="translate(510,140)" cursor="pointer" tabindex="0">
+          <circle class="event-dot" r="12" fill="#ef4444"></circle>
+          <text class="event-label" x="0" y="-20" text-anchor="middle">1789</text>
+        </g>
+
+        <!-- 1914 - right middle -->
+        <g id="event-1914" class="event" transform="translate(730,140)" cursor="pointer" tabindex="0">
+          <circle class="event-dot" r="12" fill="#6b7280"></circle>
+          <text class="event-label" x="0" y="-20" text-anchor="middle">1914</text>
+        </g>
+
+        <!-- 1939 - right end -->
+        <g id="event-1939" class="event" transform="translate(860,140)" cursor="pointer" tabindex="0">
+          <circle class="event-dot" r="12" fill="#0f1724"></circle>
+          <text class="event-label" x="0" y="-20" text-anchor="middle">1939</text>
+        </g>
+      </g>
+    </svg>
+
+    <div class="legend">
+      <div class="item"><span class="swatch" style="background:#1e90ff"></span> 1492 — Otkriće Amerike</div>
+      <div class="item"><span class="swatch" style="background:#ef4444"></span> 1789 — Francuska revolucija</div>
+      <div class="item"><span class="swatch" style="background:#6b7280"></span> 1914 — Prvi svetski rat</div>
+      <div class="item"><span class="swatch" style="background:#0f1724"></span> 1939 — Drugi svetski rat</div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup container (single, reused) -->
+<div id="popup" class="popup" role="dialog" aria-hidden="true">
+  <h3 id="popup-title"></h3>
+  <p id="popup-text"></p>
+  <div class="illustration" id="popup-illus"></div>
+  <div class="controls">
+    <button id="popup-next" class="btn">Sledeće</button>
+    <button id="popup-close" class="btn">Zatvori</button>
+  </div>
+</div>
+
+<script>
+  (function(){
+    // Data model representing interactions per input JSON
+    const events = {
+      "1492": {
+        id: "event-1492",
+        title: "1492 – Otkriće Amerike",
+        then_first: "Kristofor Kolumbo je 1492. otkrio Ameriku, što je označilo početak novog doba istraživanja i kolonizacije.",
+        then_next: ["prikaži malu ilustraciju broda na vodi"],
+        color: "#1e90ff",
+        clicks: 0
+      },
+      "1789": {
+        id: "event-1789",
+        title: "1789 – Francuska revolucija",
+        then_first: "Francuska revolucija počela je 1789. i donela velike društvene i političke promene u Evropi.",
+        then_next: ["prikaži malu ilustraciju francuske zastave"],
+        color: "#ef4444",
+        clicks: 0
+      },
+      "1914": {
+        id: "event-1914",
+        title: "1914 – Prvi svetski rat",
+        then_first: "Prvi svetski rat trajao je od 1914. do 1918. i obuhvatio je većinu svetskih sila.",
+        then_next: ["dodaj kratku animaciju eksplozije kao simbol rata"],
+        color: "#6b7280",
+        clicks: 0
+      },
+      "1939": {
+        id: "event-1939",
+        title: "1939 – Drugi svetski rat",
+        then_first: "Drugi svetski rat trajao je od 1939. do 1945. i bio je najveći oružani sukob u istoriji.",
+        then_next: ["prikaži ilustraciju globusa sa strelicama koje označavaju sukobe"],
+        color: "#0f1724",
+        clicks: 0
+      }
+    };
+
+    // DOM references
+    const popup = document.getElementById('popup');
+    const popupTitle = document.getElementById('popup-title');
+    const popupText = document.getElementById('popup-text');
+    const popupIllus = document.getElementById('popup-illus');
+    const btnClose = document.getElementById('popup-close');
+    const btnNext = document.getElementById('popup-next');
+    const svg = document.getElementById('timelineSVG');
+    let currentEventKey = null;
+
+    // Utility: position popup near clicked SVG group
+    function positionPopup(svgGroupElement) {
+      const svgRect = svg.getBoundingClientRect();
+      const groupBox = svgGroupElement.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+      // prefer above the point, centered horizontally
+      let left = groupBox.left + (groupBox.width/2) - (popupRect.width/2);
+      let top = groupBox.top - popupRect.height - 10;
+      // keep inside viewport
+      if (left < 8) left = 8;
+      if (left + popupRect.width > window.innerWidth - 8) left = window.innerWidth - popupRect.width - 8;
+      if (top < 8) top = groupBox.bottom + 12;
+      popup.style.left = Math.round(left) + 'px';
+      popup.style.top = Math.round(top) + 'px';
+    }
+
+    // Render initial event dots with accessible handlers
+    Object.keys(events).forEach(year => {
+      const ev = events[year];
+      const g = document.getElementById(ev.id);
+      if (!g) return;
+      // add pointer cursor already set in SVG, attach handler
+      g.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleEventClick(year, g);
+      });
+      // keyboard accessibility: Enter or Space
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleEventClick(year, g);
+        }
+      });
+    });
+
+    // Close when clicking outside popup
+    document.addEventListener('click', function(e){
+      if (!popup.contains(e.target)) {
+        hidePopup();
+      }
+    });
+    window.addEventListener('resize', function(){
+      if (currentEventKey) {
+        const g = document.getElementById(events[currentEventKey].id);
+        if (g) positionPopup(g);
+      }
+    });
+
+    // next button click triggers subsequent action (like additional illustration)
+    btnNext.addEventListener('click', function(e){
+      e.stopPropagation();
+      if (!currentEventKey) return;
+      performNextAction(currentEventKey);
+    });
+
+    btnClose.addEventListener('click', function(e){
+      e.stopPropagation();
+      hidePopup();
+    });
+
+    function handleEventClick(year, gElement) {
+      const ev = events[year];
+      ev.clicks += 1;
+      currentEventKey = year;
+      // first click (clicks === 1) => then_first
+      if (ev.clicks === 1) {
+        openPopup(ev, gElement);
+      } else {
+        // subsequent clicks: execute next action sequentially
+        performNextAction(year);
+      }
+    }
+
+    function openPopup(ev, gElement) {
+      popupTitle.textContent = ev.title;
+      popupText.textContent = ev.then_first || '';
+      popupIllus.innerHTML = ''; // no illustration on first
+      popup.setAttribute('aria-hidden','false');
+      popup.classList.add('show');
+      positionPopup(gElement);
+    }
+
+    function hidePopup() {
+      popup.classList.remove('show');
+      popup.setAttribute('aria-hidden','true');
+      popupIllus.innerHTML = '';
+      currentEventKey = null;
+    }
+
+    function performNextAction(year) {
+      const ev = events[year];
+      const idx = Math.max(0, ev.clicks - 2); // second click -> idx 0
+      const action = ev.then_next && ev.then_next[idx] ? ev.then_next[idx] : ev.then_next && ev.then_next[ev.then_next.length-1];
+      if (!action) return;
+      // interpret known actions
+      if (action.includes('broda') || action.includes('brod')) {
+        showShipIllustration();
+      } else if (action.includes('zastave')) {
+        showFrenchFlag();
+      } else if (action.includes('eksplozije') || action.includes('eksplozija')) {
+        showExplosion();
+      } else if (action.includes('globusa') || action.includes('globus')) {
+        showGlobeArrows();
+      } else {
+        // generic fallback: show text inside illustration area
+        popupIllus.innerHTML = '<div style="padding:10px;color:#334155;font-size:13px">Ilustracija nije dostupna.</div>';
+      }
+      // position update (in case size changed)
+      const g = document.getElementById(ev.id);
+      if (g) positionPopup(g);
+    }
+
+    // Illustrations implementations
+
+    function showShipIllustration(){
+      popupIllus.innerHTML = '';
+      const svgNS = "http://www.w3.org/2000/svg";
+      const s = document.createElementNS(svgNS,'svg');
+      s.setAttribute('width','100%');
+      s.setAttribute('height','120');
+      s.setAttribute('viewBox','0 0 220 120');
+      s.setAttribute('preserveAspectRatio','xMidYMid meet');
+
+      // sea
+      const sea = document.createElementNS(svgNS,'rect');
+      sea.setAttribute('x','0'); sea.setAttribute('y','70'); sea.setAttribute('width','220'); sea.setAttribute('height','50');
+      sea.setAttribute('fill','url(#seaGrad_sh)');
+      s.appendChild(sea);
+
+      // define gradient
+      const defs = document.createElementNS(svgNS,'defs');
+      const lg = document.createElementNS(svgNS,'linearGradient');
+      lg.setAttribute('id','seaGrad_sh');
+      lg.setAttribute('x1','0'); lg.setAttribute('x2','0'); lg.setAttribute('y1','0'); lg.setAttribute('y2','1');
+      const stop1 = document.createElementNS(svgNS,'stop'); stop1.setAttribute('offset','0%'); stop1.setAttribute('stop-color','#a8d0ff');
+      const stop2 = document.createElementNS(svgNS,'stop'); stop2.setAttribute('offset','100%'); stop2.setAttribute('stop-color','#7ab1ff');
+      lg.appendChild(stop1); lg.appendChild(stop2);
+      defs.appendChild(lg);
+      s.appendChild(defs);
+
+      // boat hull
+      const hull = document.createElementNS(svgNS,'path');
+      hull.setAttribute('d','M30 85 Q70 105 130 105 Q180 105 200 90 L200 95 Q140 120 60 115 Q20 110 30 85 Z');
+      hull.setAttribute('fill','#7b4f2f');
+      s.appendChild(hull);
+      // mast
+      const mast = document.createElementNS(svgNS,'rect');
+      mast.setAttribute('x','100'); mast.setAttribute('y','36'); mast.setAttribute('width','4'); mast.setAttribute('height','52');
+      mast.setAttribute('fill','#4b2e1c');
+      s.appendChild(mast);
+      // sail
+      const sail = document.createElementNS(svgNS,'path');
+      sail.setAttribute('d','M104 40 Q140 60 104 86 Z');
+      sail.setAttribute('fill','#fff');
+      sail.setAttribute('stroke','#e5e7eb');
+      sail.setAttribute('stroke-width','1');
+      s.appendChild(sail);
+      // simple sun
+      const sun = document.createElementNS(svgNS,'circle');
+      sun.setAttribute('cx','190'); sun.setAttribute('cy','20'); sun.setAttribute('r','14'); sun.setAttribute('fill','#ffd166');
+      s.appendChild(sun);
+
+      popupIllus.appendChild(s);
+
+      // small caption text
+      const cap = document.createElement('div');
+      cap.style.fontSize='12px';
+      cap.style.color='#374151';
+      cap.style.marginTop='6px';
+      cap.textContent = 'Ilustracija: brod kao simbol otkrića i plovidbe';
+      popupIllus.appendChild(cap);
+    }
+
+    function showFrenchFlag(){
+      popupIllus.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.style.display='flex';
+      wrapper.style.flexDirection='column';
+      wrapper.style.alignItems='center';
+      wrapper.style.justifyContent='center';
+      wrapper.style.gap='8px';
+      // flag SVG
+      const svgNS = "http://www.w3.org/2000/svg";
+      const f = document.createElementNS(svgNS,'svg');
+      f.setAttribute('width','140'); f.setAttribute('height','90'); f.setAttribute('viewBox','0 0 140 90');
+      const rect1 = document.createElementNS(svgNS,'rect'); rect1.setAttribute('x','0'); rect1.setAttribute('y','0'); rect1.setAttribute('width','140'); rect1.setAttribute('height','90'); rect1.setAttribute('fill','#fff');
+      const strip1 = document.createElementNS(svgNS,'rect'); strip1.setAttribute('x','0'); strip1.setAttribute('y','0'); strip1.setAttribute('width','46.6'); strip1.setAttribute('height','90'); strip1.setAttribute('fill','#0055a4');
+      const strip2 = document.createElementNS(svgNS,'rect'); strip2.setAttribute('x','46.6'); strip2.setAttribute('y','0'); strip2.setAttribute('width','46.6'); strip2.setAttribute('height','90'); strip2.setAttribute('fill','#fff');
+      const strip3 = document.createElementNS(svgNS,'rect'); strip3.setAttribute('x','93.2'); strip3.setAttribute('y','0'); strip3.setAttribute('width','46.8'); strip3.setAttribute('height','90'); strip3.setAttribute('fill','#ef4135');
+      f.appendChild(rect1); f.appendChild(strip1); f.appendChild(strip2); f.appendChild(strip3);
+      wrapper.appendChild(f);
+
+      const cap = document.createElement('div');
+      cap.style.fontSize='13px';
+      cap.style.color='#334155';
+      cap.textContent = 'Symbol: francuska zastava — simbol revolucije i promena';
+      wrapper.appendChild(cap);
+      popupIllus.appendChild(wrapper);
+    }
+
+    function showExplosion(){
+      popupIllus.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.style.display='flex';
+      wrapper.style.flexDirection='column';
+      wrapper.style.alignItems='center';
+      wrapper.style.justifyContent='center';
+      wrapper.style.gap='8px';
+      // explosion container
+      const ex = document.createElement('div');
+      ex.className = 'explode';
+      // create several blasts to diversify
+      for (let i=0;i<3;i++){
+        const b = document.createElement('div');
+        b.className = 'blast';
+        b.style.width = (40 + i*18) + 'px';
+        b.style.height = (40 + i*18) + 'px';
+        b.style.animationDelay = (i*120) + 'ms';
+        ex.appendChild(b);
+      }
+      wrapper.appendChild(ex);
+      const cap = document.createElement('div');
+      cap.style.fontSize='13px';
+      cap.style.color='#334155';
+      cap.textContent = 'Kratka animacija: eksplozija kao simbol rata';
+      wrapper.appendChild(cap);
+      popupIllus.appendChild(wrapper);
+      // re-trigger animation by removing and re-adding class to ensure visible multiple times
+      setTimeout(()=> {
+        ex.querySelectorAll('.blast').forEach((b, i) => {
+          b.style.animation = 'none';
+          // force reflow
+          void b.offsetWidth;
+          b.style.animation = `blastAnim 900ms ease-out ${i*120}ms forwards`;
+        });
+      }, 20);
+    }
+
+    function showGlobeArrows(){
+      popupIllus.innerHTML = '';
+      const svgNS = "http://www.w3.org/2000/svg";
+      const g = document.createElementNS(svgNS,'svg');
+      g.setAttribute('width','140'); g.setAttribute('height','120'); g.setAttribute('viewBox','0 0 140 120');
+
+      // globe circle
+      const globe = document.createElementNS(svgNS,'circle');
+      globe.setAttribute('cx','70'); globe.setAttribute('cy','60'); globe.setAttribute('r','36');
+      globe.setAttribute('fill','url(#grad_globe)');
+      globe.setAttribute('stroke','#2b6cb0');
+      globe.setAttribute('stroke-width','1.5');
+
+      const defs = document.createElementNS(svgNS,'defs');
+      const lg = document.createElementNS(svgNS,'linearGradient');
+      lg.setAttribute('id','grad_globe');
+      lg.setAttribute('x1','0'); lg.setAttribute('x2','1'); lg.setAttribute('y1','0'); lg.setAttribute('y2','1');
+      const s1 = document.createElementNS(svgNS,'stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#a7f3d0');
+      const s2 = document.createElementNS(svgNS,'stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#7dd3fc');
+      lg.appendChild(s1); lg.appendChild(s2);
+      defs.appendChild(lg);
+      g.appendChild(defs);
+      g.appendChild(globe);
+
+      // simple meridians/latitudes
+      for (let i=0;i<3;i++){
+        const lat = document.createElementNS(svgNS,'ellipse');
+        lat.setAttribute('cx','70'); lat.setAttribute('cy', 60 + (i-1)*8 );
+        lat.setAttribute('rx','34'); lat.setAttribute('ry', 8 - Math.abs(i-1)*2 );
+        lat.setAttribute('fill','none');
+        lat.setAttribute('stroke','#0f1724');
+        lat.setAttribute('stroke-opacity','0.12');
+        lat.setAttribute('stroke-width','1');
+        g.appendChild(lat);
+      }
+
+      // arrows group rotating
+      const arrows = document.createElementNS(svgNS,'g');
+      arrows.setAttribute('class','arrow-anim');
+      arrows.setAttribute('transform','translate(70,60)');
+
+      // create curved arrow paths around globe
+      const path1 = document.createElementNS(svgNS,'path');
+      path1.setAttribute('d','M -48 -10 C -30 -34 30 -34 48 -10');
+      path1.setAttribute('fill','none');
+      path1.setAttribute('stroke','#ef4444');
+      path1.setAttribute('stroke-width','3');
+      path1.setAttribute('marker-end','url(#arrowhead_red)');
+
+      const path2 = document.createElementNS(svgNS,'path');
+      path2.setAttribute('d','M 48 10 C 30 34 -30 34 -48 10');
+      path2.setAttribute('fill','none');
+      path2.setAttribute('stroke','#0ea5a4');
+      path2.setAttribute('stroke-width','3');
+      path2.setAttribute('marker-end','url(#arrowhead_teal)');
+
+      // defs for arrowheads
+      const marker1 = document.createElementNS(svgNS,'marker');
+      marker1.setAttribute('id','arrowhead_red');
+      marker1.setAttribute('markerWidth','8');
+      marker1.setAttribute('markerHeight','8');
+      marker1.setAttribute('refX','6');
+      marker1.setAttribute('refY','3');
+      marker1.setAttribute('orient','auto');
+      const mpath1 = document.createElementNS(svgNS,'path');
+      mpath1.setAttribute('d','M0,0 L6,3 L0,6 L2,3 z');
+      mpath1.setAttribute('fill','#ef4444');
+      marker1.appendChild(mpath1);
+
+      const marker2 = document.createElementNS(svgNS,'marker');
+      marker2.setAttribute('id','arrowhead_teal');
+      marker2.setAttribute('markerWidth','8');
+      marker2.setAttribute('markerHeight','8');
+      marker2.setAttribute('refX','6');
+      marker2.setAttribute('refY','3');
+      marker2.setAttribute('orient','auto');
+      const mpath2 = document.createElementNS(svgNS,'path');
+      mpath2.setAttribute('d','M0,0 L6,3 L0,6 L2,3 z');
+      mpath2.setAttribute('fill','#0ea5a4');
+      marker2.appendChild(mpath2);
+
+      const defs2 = document.createElementNS(svgNS,'defs');
+      defs2.appendChild(marker1);
+      defs2.appendChild(marker2);
+      g.appendChild(defs2);
+
+      arrows.appendChild(path1);
+      arrows.appendChild(path2);
+      g.appendChild(arrows);
+
+      popupIllus.appendChild(g);
+
+      const cap = document.createElement('div');
+      cap.style.fontSize='13px';
+      cap.style.color='#334155';
+      cap.style.marginTop='8px';
+      cap.textContent = 'Ilustracija: globus sa strelicama koje prikazuju međunarodne sukobe';
+      popupIllus.appendChild(cap);
+    }
+
+    // For demonstration: when clicking same event many times, cycle through then_next list actions.
+    // The click counter increments each click; performNextAction uses clicks to decide which action to run.
+    // If requested action is the same as already displayed, we toggle it off for clarity on subsequent clicks:
+    // But to keep behavior simple, subsequent clicks re-run the illustration/animation.
+
+    // Initialize: nothing open
+
+    // Small enhancement: when user clicks an event, highlight its dot border temporarily
+    function flashDot(evKey){
+      const el = document.getElementById(events[evKey].id);
+      if (!el) return;
+      const circle = el.querySelector('circle');
+      circle.style.filter='drop-shadow(0 6px 18px rgba(60,80,120,0.18))';
+      setTimeout(()=>{ circle.style.filter='drop-shadow(0 2px 6px rgba(30,40,60,0.12))'; }, 600);
+    }
+
+    // Attach wrapper to perform flash inside handleEventClick
+    const originalHandle = handleEventClick;
+    // We'll wrap the function for flashing (can't reassign easily because it's defined earlier as const)
+    // Instead, adjust handleEventClick by adding flashDot call at end of event handler assignment above:
+    // (we'll add now: the event listeners already call handleEventClick; so we'll augment listeners to call flash)
+    // We'll add a small additional listener to each group for visual feedback.
+    Object.keys(events).forEach(year => {
+      const ev = events[year];
+      const g = document.getElementById(ev.id);
+      if (!g) return;
+      g.addEventListener('click', ()=> flashDot(year));
+    });
+
+    // Prevent scroll on spacebar when focusing SVG groups
+    window.addEventListener('keydown', function(e){
+      if (e.code === 'Space' && document.activeElement && document.activeElement.closest && document.activeElement.closest('svg')) {
+        e.preventDefault();
+      }
+    });
+
+  })();
+</script>
+</body>
+</html>
