@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<title>Interaktivno iscrtavanje trigonometrijske funkcije</title>
+<style>
+  /* audience: srednjoškolci */
+  :root{
+    --bg:#f7fbff;
+    --panel:#ffffff;
+    --accent:#1e88e5;
+    --muted:#6b7280;
+    --grid:#e1eef9;
+    --control-bg:#f0f4f8;
+    --shadow: rgba(16,24,40,0.08);
+    --toast-bg: rgba(30,136,229,0.95);
+  }
+  *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{margin:0;background:linear-gradient(180deg,#f7fbff 0%, #ffffff 100%);color:#0f1724;display:flex;flex-direction:column;align-items:center;padding:28px;}
+  .container{width:960px;max-width:96%;background:var(--panel);border-radius:12px;padding:20px;box-shadow:0 6px 20px var(--shadow);}
+  h1{margin:0 0 8px 0;font-size:20px;color:#05263b;}
+  p.description{margin:0 0 16px 0;color:var(--muted);line-height:1.45;}
+  .canvas-wrap{position:relative;border-radius:8px;overflow:hidden;background:var(--bg);padding:12px;border:1px solid #e6f0fb;}
+  canvas{display:block;width:100%;height:480px;background:linear-gradient(180deg,#ffffff 0%, #f3fbff 100%);}
+  .overlay{
+    position:absolute;left:18px;top:18px;background:rgba(255,255,255,0.85);padding:8px 12px;border-radius:8px;border:1px solid #eef6ff;font-size:13px;color:#064b79;
+    box-shadow:0 4px 14px rgba(10,20,40,0.06);
+  }
+  .formula{font-weight:600;}
+  .controls{display:flex;flex-direction:column;gap:12px;margin-top:14px;padding-top:10px;border-top:1px dashed #eef6ff;}
+  .control-row{display:flex;align-items:center;gap:12px;}
+  .control-label{width:120px;font-size:14px;color:#0b3b5a;}
+  .slider-wrap{flex:1;background:var(--control-bg);padding:10px;border-radius:10px;display:flex;align-items:center;gap:12px;}
+  input[type="range"]{width:100%;}
+  .val{min-width:86px;text-align:right;font-weight:600;color:#053047;}
+  .small{font-size:12px;color:var(--muted);}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+  .btn{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;box-shadow:0 6px 18px rgba(30,136,229,0.18);}
+  .btn:active{transform:translateY(1px);}
+  .reset{background:#fff;border:1px solid #e2eefb;color:#065a8c;}
+  .legend{display:flex;gap:12px;align-items:center;}
+  .legend .swatch{width:14px;height:14px;border-radius:3px;background:var(--accent);box-shadow:0 2px 6px rgba(30,136,229,0.15);}
+  .toast{
+    position:absolute;right:18px;top:18px;padding:10px 14px;border-radius:10px;color:white;background:var(--toast-bg);font-weight:600;opacity:0;transform:translateY(-8px);transition:all 300ms cubic-bezier(.2,.9,.25,1);
+    pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateY(0);}
+  .grid-label{position:absolute;left:18px;bottom:18px;background:rgba(255,255,255,0.9);padding:8px 10px;border-radius:8px;border:1px solid #eef6ff;font-size:13px;color:#0b3b5a;}
+  @media (max-width:640px){
+    canvas{height:360px;}
+    .control-label{width:110px;}
+  }
+</style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="Interaktivni grafoseparator">
+    <h1>Interaktivno iscrtavanje trigonometrijske funkcije</h1>
+    <p class="description">Ovaj interaktivni alat omogućava učenicima da vizuelno istraže trigonometrijske funkcije. Korisnik može menjati parametre funkcije (amplitudu, frekvenciju i fazni pomeraj), a graf se automatski osvežava. Na taj način učenici bolje razumeju kako promene parametara utiču na oblik funkcije.</p>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="graph"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="formula" id="formula">y = 1 · sin(1 · x + 0)</div>
+        <div class="small">Opseg x: -2π … 2π &nbsp; • &nbsp; Plava linija = trenutna funkcija</div>
+      </div>
+      <div class="toast" id="toast">Promena</div>
+      <div class="grid-label" id="gridLabel">Mreža: 0.5π korak</div>
+    </div>
+
+    <div class="controls" aria-hidden="false">
+      <div class="control-row">
+        <div class="control-label">Amplituda (A)</div>
+        <div class="slider-wrap">
+          <input id="amp" type="range" min="0" max="3" step="0.01" value="1" />
+          <div style="min-width:110px;text-align:right;">
+            <div class="val" id="ampVal">1.00</div>
+            <div class="small">y = A · sin(...)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-label">Frekvencija (B)</div>
+        <div class="slider-wrap">
+          <input id="freq" type="range" min="0.1" max="5" step="0.01" value="1" />
+          <div style="min-width:110px;text-align:right;">
+            <div class="val" id="freqVal">1.00</div>
+            <div class="small">y = sin(B · x)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-label">Fazni pomeraj (C)</div>
+        <div class="slider-wrap">
+          <input id="phase" type="range" min="-3.1416" max="3.1416" step="0.01" value="0" />
+          <div style="min-width:110px;text-align:right;">
+            <div class="val" id="phaseVal">0.00 rad</div>
+            <div class="small">y = sin(x + C)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="legend"><div class="swatch"></div><div class="small">Plava linija: y = A · sin(B·x + C)</div></div>
+        <div>
+          <button class="btn reset" id="resetBtn">Vrati podrazumevano</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Audience: srednjoškolci
+  Tool: Interaktivno iscrtavanje trigonometrijske funkcije
+  Initial view: koordinatni sistem i osnovna funkcija y = sin(x) (A=1,B=1,C=0)
+*/
+
+/* --------- Setup and utilities --------- */
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+const toastEl = document.getElementById('toast');
+const overlayFormula = document.getElementById('formula');
+const gridLabel = document.getElementById('gridLabel');
+
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = wrap.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor((rect.height - 24) * dpr); // subtract some padding
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = (rect.height - 24) + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawImmediate();
+}
+window.addEventListener('resize', resizeCanvas);
+
+/* Graph coordinate system settings */
+const GRAPH = {
+  xMin: -Math.PI*2,
+  xMax: Math.PI*2,
+  yMin: -3.5,
+  yMax: 3.5,
+  margin: {left:50, right:18, top:18, bottom:36}
+};
+
+/* map graph coords to pixel */
+function xToPx(x){
+  const w = canvas.clientWidth - GRAPH.margin.left - GRAPH.margin.right;
+  return GRAPH.margin.left + ((x - GRAPH.xMin) / (GRAPH.xMax - GRAPH.xMin)) * w;
+}
+function yToPx(y){
+  const h = canvas.clientHeight - GRAPH.margin.top - GRAPH.margin.bottom;
+  return GRAPH.margin.top + ((GRAPH.yMax - y) / (GRAPH.yMax - GRAPH.yMin)) * h;
+}
+
+/* easing */
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+/* ---------- Parameters and animation state ---------- */
+let current = {A:1, B:1, C:0}; // rendered params
+let target = {...current}; // target params to animate to
+let animStart = null;
+let animDuration = 420; // ms
+let isAnimating = false;
+
+/* Track first-change per control to implement then_first / then_next behavior */
+const firstChange = {amp:true, freq:true, phase:true};
+
+/* Messages according to interactions */
+const messages = {
+  amp: {
+    first: "Graf se ponovo iscrta sa novom amplitudom (y = A · sin(x))",
+    next: "Funkcija postaje viša ili niža u zavisnosti od vrednosti"
+  },
+  freq: {
+    first: "Graf se ponovo iscrta sa novom frekvencijom (y = sin(B · x))",
+    next: "Talasi se zgušnjavaju ili razređuju na x-osi"
+  },
+  phase: {
+    first: "Graf se pomera ulevo ili udesno (y = sin(x + C))",
+    next: "Funkcija se horizontalno translira"
+  }
+};
+
+/* Controls */
+const ampEl = document.getElementById('amp');
+const freqEl = document.getElementById('freq');
+const phaseEl = document.getElementById('phase');
+
+const ampValEl = document.getElementById('ampVal');
+const freqValEl = document.getElementById('freqVal');
+const phaseValEl = document.getElementById('phaseVal');
+
+function showToast(text, timeout=1500){
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(()=>toastEl.classList.remove('show'), timeout);
+}
+
+/* Update overlay formula */
+function updateFormula(){
+  const A = (Math.round(current.A*100)/100).toFixed(2);
+  const B = (Math.round(current.B*100)/100).toFixed(2);
+  const C = (Math.round(current.C*100)/100).toFixed(2);
+  overlayFormula.textContent = `y = ${A} · sin(${B} · x + ${C})`;
+}
+
+/* ---------- Drawing functions ---------- */
+function clearCanvas(){
+  ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
+}
+
+function drawGrid(){
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  // background
+  ctx.fillStyle = 'rgba(250,255,255,0.0)';
+  ctx.fillRect(0,0,w,h);
+
+  // vertical grid lines (step pi/2)
+  ctx.save();
+  ctx.strokeStyle = '#e8f4ff';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const step = Math.PI * 0.5; // 0.5π
+  for(let x = GRAPH.xMin; x <= GRAPH.xMax + 1e-9; x += step){
+    const px = xToPx(x);
+    ctx.moveTo(px, GRAPH.margin.top);
+    ctx.lineTo(px, h - GRAPH.margin.bottom);
+  }
+  // horizontal grid lines
+  const yStep = 0.5;
+  for(let y = GRAPH.yMin; y <= GRAPH.yMax + 1e-9; y += yStep){
+    const py = yToPx(y);
+    ctx.moveTo(GRAPH.margin.left, py);
+    ctx.lineTo(w - GRAPH.margin.right, py);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // thicker axes
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#c6e6ff';
+  // x axis (y=0)
+  const y0 = yToPx(0);
+  ctx.beginPath();
+  ctx.moveTo(GRAPH.margin.left, y0);
+  ctx.lineTo(w - GRAPH.margin.right, y0);
+  ctx.stroke();
+  // y axis (x=0)
+  const x0 = xToPx(0);
+  ctx.beginPath();
+  ctx.moveTo(x0, GRAPH.margin.top);
+  ctx.lineTo(x0, h - GRAPH.margin.bottom);
+  ctx.stroke();
+  ctx.restore();
+
+  // axis ticks and labels
+  ctx.save();
+  ctx.fillStyle = '#064b79';
+  ctx.font = '12px system-ui, Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  // x labels at multiples of pi/2
+  const labelStep = Math.PI * 0.5;
+  for(let x = GRAPH.xMin; x <= GRAPH.xMax + 1e-9; x += labelStep){
+    const px = xToPx(x);
+    let label = '';
+    const denom = Math.PI;
+    if (Math.abs(x) < 1e-6) label = '0';
+    else {
+      // express as pi multiples: e.g., -3π/2, -π, -π/2, π/2, π, 3π/2
+      const n = Math.round(x / (Math.PI/2));
+      // convert n to nice label
+      if (n % 2 === 0){
+        const m = n/2;
+        label = (m===1? 'π' : m===-1 ? '-π' : m===0 ? '0' : (m + 'π'));
+      } else {
+        // half pi multiples
+        const sign = n>0? (n===1? '' : n) : (n===-1? '-' : n);
+        // e.g., 1 -> π/2, 3 -> 3π/2
+        label = (n===1? 'π/2' : n===-1? '-π/2' : (n + 'π/2'));
+        // For nicer look, replace numbers like 3π/2 with 3π/2
+      }
+    }
+    ctx.fillText(label, px, h - GRAPH.margin.bottom + 6);
+  }
+  // y labels (integers)
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for(let y = Math.ceil(GRAPH.yMin); y <= Math.floor(GRAPH.yMax); y++){
+    const py = yToPx(y);
+    ctx.fillText(String(y), GRAPH.margin.left - 8, py);
+  }
+  ctx.restore();
+}
+
+function drawFunction(params, strokeStyle='#1e88e5', lineWidth=2.6){
+  ctx.save();
+  ctx.beginPath();
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineJoin = 'round';
+  const samples = Math.max(700, Math.floor(canvas.clientWidth*1.5));
+  for(let i=0;i<=samples;i++){
+    const t = i/samples;
+    const x = GRAPH.xMin + t*(GRAPH.xMax - GRAPH.xMin);
+    const y = params.A * Math.sin(params.B * x + params.C);
+    const px = xToPx(x);
+    const py = yToPx(y);
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* draw labels and formulas */
+function drawImmediate(){
+  clearCanvas();
+  drawGrid();
+  // draw function
+  drawFunction(current, '#1e88e5', 2.8);
+  // additional thin pastel line showing baseline y=sin(x) in faint color (helps compare)
+  drawFunction({A:1,B:1,C:0}, 'rgba(2,48,99,0.06)', 2);
+  // draw center dot moving along the curve to illustrate amplitude (optional small animation)
+  updateFormula();
+}
+
+/* ---------- Animation loop for smooth transitions ---------- */
+function startAnimation(newTarget){
+  // set target
+  target = {...newTarget};
+  animStart = performance.now();
+  isAnimating = true;
+  requestAnimationFrame(stepAnim);
+}
+
+function stepAnim(ts){
+  if (!isAnimating) return;
+  const t = Math.min(1, (ts - animStart)/animDuration);
+  const e = easeOutCubic(t);
+  // interpolate each param
+  current.A = current.A + (target.A - current.A) * e;
+  current.B = current.B + (target.B - current.B) * e;
+  current.C = current.C + (target.C - current.C) * e;
+  drawImmediate();
+  // update displayed numeric values progressively (but do not move sliders)
+  ampValEl.textContent = current.A.toFixed(2);
+  freqValEl.textContent = current.B.toFixed(2);
+  phaseValEl.textContent = current.C.toFixed(2) + ' rad';
+  if (t < 1){
+    requestAnimationFrame(stepAnim);
+  } else {
+    // finalize to exact target to avoid rounding accumulation
+    current = {...target};
+    ampValEl.textContent = current.A.toFixed(2);
+    freqValEl.textContent = current.B.toFixed(2);
+    phaseValEl.textContent = current.C.toFixed(2) + ' rad';
+    updateFormula();
+    isAnimating = false;
+  }
+}
+
+/* ---------- Interaction handlers implementing IF/THEN logic ---------- */
+function handleAmpChange(value){
+  const prevTarget = {...target};
+  target.A = parseFloat(value);
+  // IF: pomeranje klizača 'Amplituda'
+  if (firstChange.amp){
+    // THEN_FIRST
+    showToast(messages.amp.first);
+    firstChange.amp = false;
+  } else {
+    // THEN_NEXT (subsequent)
+    showToast(messages.amp.next, 1100);
+  }
+  // Start smooth transition: animate from current to target
+  // To make transitions consistent, reset animStart and start
+  animStart = performance.now();
+  isAnimating = true;
+  // copy current into local base to smoothly interpolate using stepAnim function
+  requestAnimationFrame(stepAnim);
+}
+
+function handleFreqChange(value){
+  target.B = parseFloat(value);
+  if (firstChange.freq){
+    showToast(messages.freq.first);
+    firstChange.freq = false;
+  } else {
+    showToast(messages.freq.next, 1100);
+  }
+  animStart = performance.now();
+  isAnimating = true;
+  requestAnimationFrame(stepAnim);
+}
+
+function handlePhaseChange(value){
+  target.C = parseFloat(value);
+  if (firstChange.phase){
+    showToast(messages.phase.first);
+    firstChange.phase = false;
+  } else {
+    showToast(messages.phase.next, 1100);
+  }
+  animStart = performance.now();
+  isAnimating = true;
+  requestAnimationFrame(stepAnim);
+}
+
+/* Slider input events (these count as user interactions). We track first-change semantics here. */
+ampEl.addEventListener('input', (e)=>{
+  const v = parseFloat(e.target.value);
+  ampValEl.textContent = v.toFixed(2);
+  // Update numbers immediately but animate the curve to new amplitude
+  handleAmpChange(v);
+  // update formula visually immediately to show intended values (but actual rendering will animate)
+  overlayFormula.textContent = `y = ${v.toFixed(2)} · sin(${target.B.toFixed(2)} · x + ${target.C.toFixed(2)})`;
+});
+freqEl.addEventListener('input', (e)=>{
+  const v = parseFloat(e.target.value);
+  freqValEl.textContent = v.toFixed(2);
+  handleFreqChange(v);
+  overlayFormula.textContent = `y = ${target.A.toFixed(2)} · sin(${v.toFixed(2)} · x + ${target.C.toFixed(2)})`;
+});
+phaseEl.addEventListener('input', (e)=>{
+  const v = parseFloat(e.target.value);
+  phaseValEl.textContent = v.toFixed(2) + ' rad';
+  handlePhaseChange(v);
+  overlayFormula.textContent = `y = ${target.A.toFixed(2)} · sin(${target.B.toFixed(2)} · x + ${v.toFixed(2)})`;
+});
+
+/* Reset button */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  ampEl.value = 1; freqEl.value = 1; phaseEl.value = 0;
+  ampValEl.textContent = '1.00';
+  freqValEl.textContent = '1.00';
+  phaseValEl.textContent = '0.00 rad';
+  // reset first-change flags so then_first triggers again if desired
+  firstChange.amp = firstChange.freq = firstChange.phase = true;
+  // animate back to defaults
+  startAnimation({A:1,B:1,C:0});
+  showToast('Vraćeno na podrazumevano', 1200);
+});
+
+/* small responsive initial rendering */
+function init(){
+  resizeCanvas();
+  // ensure initial formula text consistent
+  updateFormula();
+  // initial draw
+  drawImmediate();
+  // set initial target == current
+  target = {...current};
+  // slight pulsing animation for the baseline to draw attention
+  let pulse = 0;
+  function pulseTick(){
+    pulse += 0.02;
+    // subtle shift of background grid label opacity to suggest liveliness
+    gridLabel.style.opacity = (0.9 + 0.1*Math.sin(pulse)).toString();
+    requestAnimationFrame(pulseTick);
+  }
+  pulseTick();
+}
+
+init();
+
+/* Allow clicking on canvas to display current y at mouse x (extra interactivity) */
+canvas.addEventListener('click', (ev)=>{
+  const rect = canvas.getBoundingClientRect();
+  const xpx = ev.clientX - rect.left;
+  const yGraph = GRAPH.xMin + ( (xpx - GRAPH.margin.left) / (rect.width - GRAPH.margin.left - GRAPH.margin.right) ) * (GRAPH.xMax - GRAPH.xMin);
+  const yVal = current.A * Math.sin(current.B * yGraph + current.C);
+  // show temporary info toast with coordinates
+  showToast(`x=${yGraph.toFixed(2)}, y=${yVal.toFixed(2)}`, 1300);
+});
+
+/* drawImmediate when page is focused or resized */
+window.addEventListener('focus', drawImmediate);
+
+</script>
+</body>
+</html>

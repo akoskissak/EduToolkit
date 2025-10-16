@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vizualizacija životinjske ćelije</title>
+<style>
+  /* Audience: osnovnoškolci i srednjoškolci */
+
+  :root{
+    --bg:#f6fbff;
+    --cell-membrane:#cfeefe;
+    --cytoplasm:#f3fcff;
+    --nucleus-outer:#6fa8ff;
+    --nucleus-inner:#a6d1ff;
+    --mito:#78c27a;
+    --er:#ffd966;
+    --lys:#e06666;
+    --rib:#777;
+    --label-bg:rgba(255,255,255,0.9);
+  }
+
+  html,body{height:100%;margin:0;font-family:Helvetica,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#ffffff);color:#0b2540;}
+  .container{max-width:1000px;margin:18px auto;padding:14px;}
+  h1{margin:6px 0 8px 0;font-size:28px;color:#073b4c;}
+  p.description{margin:0 0 12px 0;background:var(--label-bg);padding:10px;border-radius:6px;border:1px solid rgba(7,59,76,0.06);line-height:1.45}
+  .tool{display:flex;gap:12px;align-items:flex-start}
+  .svg-wrap{background:transparent;border-radius:8px;flex:1;box-shadow:0 6px 18px rgba(3,36,60,0.06);padding:8px}
+  svg{width:100%;height:660px;display:block}
+  .side{width:260px;padding:10px}
+  .instructions{background:linear-gradient(180deg,#ffffff,#f7fbff);padding:10px;border-radius:8px;border:1px solid rgba(7,59,76,0.06)}
+  .note{font-size:13px;color:#214b56;margin-top:8px}
+  .legend{margin-top:10px;font-size:13px}
+  .legend-item{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .swatch{width:18px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,0.08)}
+  /* Popup */
+  .popup{
+    position:fixed;
+    max-width:300px;
+    padding:10px 12px;
+    background:linear-gradient(180deg,#fff,#fcfffb);
+    border-radius:8px;
+    border:1px solid rgba(0,0,0,0.08);
+    box-shadow:0 12px 30px rgba(2,40,60,0.12);
+    z-index:9999;
+    font-size:14px;
+    color:#062b3a;
+  }
+  .popup .title{font-weight:700;margin-bottom:6px}
+  .popup .close{position:absolute;right:8px;top:6px;background:none;border:none;font-size:16px;color:#2a4950;cursor:pointer}
+  .popup small{display:block;margin-top:6px;color:#35585f;font-size:12px}
+  /* Clickable cursor */
+  .clickable{cursor:pointer}
+  /* Animations and highlights */
+  .glow{filter:drop-shadow(0 0 12px rgba(102,153,255,0.7)); transition:filter 0.35s;}
+  .er-highlight{filter:drop-shadow(0 0 12px rgba(255,209,77,0.8)); transition:filter 0.35s;}
+  .pulse{
+    animation:pulse 900ms ease-in-out infinite;
+    transform-origin:center;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1);opacity:1}
+    50%{transform:scale(1.15);opacity:0.85}
+    100%{transform:scale(1);opacity:1}
+  }
+  /* mitochondria wave: animate inner folds via stroke-dashoffset/morph */
+  .mito-wave .mito-fold{animation:wave 1200ms ease-in-out infinite}
+  @keyframes wave{
+    0%{transform:translateY(0) scaleY(1);opacity:1}
+    50%{transform:translateY(-3px) scaleY(1.05);opacity:0.85}
+    100%{transform:translateY(0) scaleY(1);opacity:1}
+  }
+  /* small label boxes for arrows */
+  .label-box{font-size:13px;background:var(--label-bg);padding:4px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.06)}
+  footer{margin-top:10px;font-size:12px;color:#23444d}
+  /* make sure text on SVG is crisp */
+  svg text{font-family:inherit}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Vizualizacija životinjske ćelije</h1>
+  <p class="description">Ovaj interaktivni alat omogućava učenicima da istraže unutrašnju strukturu životinjske ćelije. Na ekranu se prikazuje jednostavan model ćelije sa njenim osnovnim komponentama. Klikom na svaku komponentu otvara se prozorčić (popup) sa kratkim objašnjenjem o njenoj ulozi u funkcionisanju ćelije.</p>
+
+  <div class="tool">
+    <div class="svg-wrap" id="svgWrap">
+      <svg id="cellSvg" viewBox="0 0 1000 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shema životinjske ćelije">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#0b2540"/>
+          </marker>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- Cell membrane / cytoplasm -->
+        <g id="cellGroup">
+          <ellipse cx="500" cy="380" rx="410" ry="300" fill="url(#cellGrad)" stroke="#9bd3db" stroke-width="6" />
+          <defs>
+            <radialGradient id="cellGrad" cx="40%" cy="30%">
+              <stop offset="0%" stop-color="#f7ffff"/>
+              <stop offset="45%" stop-color="#f0fbff"/>
+              <stop offset="100%" stop-color="#e5fbff"/>
+            </radialGradient>
+          </defs>
+          <!-- cytoplasm overlay -->
+          <ellipse cx="500" cy="380" rx="380" ry="270" fill="rgba(243,252,255,0.95)"/>
+        </g>
+
+        <!-- Ribosomes (small dots) -->
+        <g id="ribosomes" aria-label="Ribosomi">
+          <!-- random small dots -->
+          <g fill="#666666" opacity="0.9">
+            <circle cx="370" cy="260" r="3.5"/>
+            <circle cx="630" cy="320" r="3.5"/>
+            <circle cx="560" cy="440" r="3.5"/>
+            <circle cx="450" cy="500" r="3.5"/>
+            <circle cx="320" cy="410" r="3.5"/>
+            <circle cx="520" cy="300" r="3.5"/>
+            <circle cx="680" cy="420" r="3.5"/>
+            <circle cx="420" cy="330" r="3.5"/>
+            <circle cx="600" cy="240" r="3.5"/>
+            <circle cx="480" cy="220" r="3.5"/>
+          </g>
+        </g>
+
+        <!-- Endoplasmic Reticulum (ER) - yellow network around nucleus -->
+        <g id="er" class="clickable" transform="translate(0,0)" aria-label="Endoplazmatski retikulum">
+          <!-- stylized tubes -->
+          <g stroke="#d9b400" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M370 280 q40 -20 80 0 t80 0 t60 -12" stroke="#f5d86b"/>
+            <path d="M360 300 q40 -10 90 6 t90 -4 t60 -8" stroke="#ffd966" stroke-width="8"/>
+            <path d="M365 320 q45 0 85 8 t85 -2" stroke="#ffd24a" stroke-width="7"/>
+            <path d="M330 360 q50 -30 80 -25 t120 20" stroke="#ffd966" stroke-width="7"/>
+            <path d="M680 360 q-50 -40 -120 -35" stroke="#ffeb99" stroke-width="6"/>
+          </g>
+          <!-- for hit area, add transparent wider strokes -->
+          <g fill="none" stroke="transparent" stroke-width="18">
+            <path d="M370 280 q40 -20 80 0 t80 0 t60 -12"/>
+            <path d="M360 300 q40 -10 90 6 t90 -4 t60 -8"/>
+            <path d="M365 320 q45 0 85 8 t85 -2"/>
+            <path d="M330 360 q50 -30 80 -25 t120 20"/>
+            <path d="M680 360 q-50 -40 -120 -35"/>
+          </g>
+        </g>
+
+        <!-- Nucleus (blue oval with double membrane and dotted interior) -->
+        <g id="nucleus" class="clickable" transform="translate(0,0)" aria-label="Nukleus">
+          <!-- double membrane -->
+          <ellipse cx="500" cy="360" rx="155" ry="110" fill="url(#nucInner)" stroke="#4d87d8" stroke-width="6"/>
+          <ellipse cx="500" cy="360" rx="175" ry="130" fill="none" stroke="#2e6fcf" stroke-width="5" opacity="0.35"/>
+          <defs>
+            <radialGradient id="nucInner" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="#dff0ff"/>
+              <stop offset="60%" stop-color="#bfe3ff"/>
+              <stop offset="100%" stop-color="#9fd6ff"/>
+            </radialGradient>
+          </defs>
+          <!-- dotted nucleoplasm -->
+          <g fill="#3b7fbf" opacity="0.9">
+            <!-- arrange dots -->
+            <circle cx="470" cy="340" r="2.4"/>
+            <circle cx="520" cy="350" r="2.2"/>
+            <circle cx="490" cy="370" r="2.5"/>
+            <circle cx="530" cy="330" r="2.2"/>
+            <circle cx="450" cy="360" r="2.3"/>
+            <circle cx="510" cy="380" r="2.1"/>
+            <circle cx="480" cy="330" r="2"/>
+            <circle cx="525" cy="370" r="2.3"/>
+            <circle cx="495" cy="350" r="2.1"/>
+          </g>
+          <!-- hit area overlay -->
+          <ellipse cx="500" cy="360" rx="180" ry="135" fill="transparent" />
+        </g>
+
+        <!-- Mitochondria (green ovals with inner folds) -->
+        <g id="mitochondria">
+          <!-- mito 1 -->
+          <g id="mito1" class="mito clickable" transform="translate(300,210)" aria-label="Mitohondrija">
+            <g transform="translate(0,0)">
+              <ellipse cx="0" cy="0" rx="48" ry="26" fill="#9de8a6" stroke="#3da34d" stroke-width="3"/>
+              <g class="mito-folds" transform="translate(-18,-8)" fill="none" stroke="#2f8a3a" stroke-width="3" stroke-linecap="round">
+                <path class="mito-fold" d="M0 0 q8 6 16 0 q8 -6 16 0" transform="translate(0,0)"/>
+                <path class="mito-fold" d="M0 10 q8 6 16 0 q8 -6 16 0" transform="translate(0,4)"/>
+              </g>
+              <ellipse cx="0" cy="0" rx="58" ry="34" fill="transparent" />
+              <!-- hit area -->
+              <ellipse cx="0" cy="0" rx="70" ry="40" fill="transparent" />
+            </g>
+          </g>
+
+          <!-- mito 2 -->
+          <g id="mito2" class="mito clickable" transform="translate(680,320) rotate(-18)" aria-label="Mitohondrija">
+            <ellipse cx="0" cy="0" rx="46" ry="26" fill="#9de8a6" stroke="#3da34d" stroke-width="3"/>
+            <g class="mito-folds" transform="translate(-18,-8)" fill="none" stroke="#2f8a3a" stroke-width="3" stroke-linecap="round">
+              <path class="mito-fold" d="M0 0 q8 6 16 0 q8 -6 16 0" transform="translate(0,0)"/>
+              <path class="mito-fold" d="M0 10 q8 6 16 0 q8 -6 16 0" transform="translate(0,4)"/>
+            </g>
+            <ellipse cx="0" cy="0" rx="66" ry="36" fill="transparent" />
+          </g>
+
+          <!-- mito 3 -->
+          <g id="mito3" class="mito clickable" transform="translate(600,210) rotate(15)" aria-label="Mitohondrija">
+            <ellipse cx="0" cy="0" rx="40" ry="24" fill="#9de8a6" stroke="#3da34d" stroke-width="3"/>
+            <g class="mito-folds" transform="translate(-16,-8)" fill="none" stroke="#2f8a3a" stroke-width="3" stroke-linecap="round">
+              <path class="mito-fold" d="M0 0 q8 6 14 0 q8 -6 14 0" transform="translate(0,0)"/>
+              <path class="mito-fold" d="M0 10 q8 6 14 0 q8 -6 14 0" transform="translate(0,4)"/>
+            </g>
+            <ellipse cx="0" cy="0" rx="54" ry="34" fill="transparent" />
+          </g>
+        </g>
+
+        <!-- Lysosomes (small red circles) -->
+        <g id="lysosomes" aria-label="Lizozomi">
+          <g id="lys1" class="lys clickable" transform="translate(380,470)">
+            <circle cx="0" cy="0" r="10" fill="#e06666" stroke="#b33a3a" stroke-width="1.5"/>
+          </g>
+          <g id="lys2" class="lys clickable" transform="translate(630,480)">
+            <circle cx="0" cy="0" r="8" fill="#e06666" stroke="#b33a3a" stroke-width="1.5"/>
+          </g>
+          <g id="lys3" class="lys clickable" transform="translate(550,460)">
+            <circle cx="0" cy="0" r="8" fill="#e06666" stroke="#b33a3a" stroke-width="1.5"/>
+          </g>
+        </g>
+
+        <!-- Arrows and labels -->
+        <g id="labels" font-size="13" fill="#052b36">
+          <!-- nucleus label -->
+          <line x1="500" y1="230" x2="500" y2="305" stroke="#0b2540" stroke-width="1.4" marker-end="url(#arrow)" />
+          <foreignObject x="450" y="190" width="120" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="label-box" style="text-align:center">Nukleus</div>
+          </foreignObject>
+
+          <!-- ER label -->
+          <line x1="300" y1="330" x2="360" y2="320" stroke="#0b2540" stroke-width="1.4" marker-end="url(#arrow)"/>
+          <foreignObject x="240" y="290" width="120" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="label-box" style="text-align:center">Endoplazmatski retikulum</div>
+          </foreignObject>
+
+          <!-- mitochondria labels -->
+          <line x1="360" y1="190" x2="340" y2="160" stroke="#0b2540" stroke-width="1.3" marker-end="url(#arrow)"/>
+          <foreignObject x="230" y="120" width="140" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="label-box" style="text-align:center">Mitohondrije</div>
+          </foreignObject>
+
+          <line x1="720" y1="250" x2="740" y2="220" stroke="#0b2540" stroke-width="1.3" marker-end="url(#arrow)"/>
+          <foreignObject x="740" y="190" width="120" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="label-box" style="text-align:center">Mitohondrije</div>
+          </foreignObject>
+
+          <!-- lysosome label -->
+          <line x1="650" y1="520" x2="620" y2="495" stroke="#0b2540" stroke-width="1.3" marker-end="url(#arrow)"/>
+          <foreignObject x="660" y="520" width="120" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="label-box" style="text-align:center">Lizozomi</div>
+          </foreignObject>
+        </g>
+
+      </svg>
+    </div>
+
+    <div class="side">
+      <div class="instructions">
+        <strong>Kako koristiti</strong>
+        <div class="note">Kliknite na: Nukleus, Mitohondriju, Endoplazmatski retikulum ili Lizozom da dobijete kratko objašnjenje. Drugi klik aktivira animaciju kojom se naglašava funkcija organele.</div>
+
+        <div class="legend">
+          <div style="margin-top:8px"><strong>Boje i oblici</strong></div>
+          <div class="legend-item"><div class="swatch" style="background:linear-gradient(180deg,#9fd6ff,#a6d1ff);border:2px solid #4d87d8"></div><div>Nukleus (plavi oval, dvostruka membrana)</div></div>
+          <div class="legend-item"><div class="swatch" style="background:#9de8a6;border:2px solid #3da34d"></div><div>Mitohondrije (zelene, naborane)</div></div>
+          <div class="legend-item"><div class="swatch" style="background:#ffd966;border:2px solid #d9b400"></div><div>Endoplazmatski retikulum (žute cevčice)</div></div>
+          <div class="legend-item"><div class="swatch" style="background:#e06666;border:2px solid #b33a3a"></div><div>Lizozomi (mali crveni krugovi)</div></div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:12px;font-size:13px;color:#12303a">
+        <strong>Interaktivnosti</strong>
+        <ul style="padding-left:18px;margin:8px 0">
+          <li>Klik 1: prikaz objašnjenja (popup)</li>
+          <li>Klik 2: aktivira animaciju / sjaj</li>
+          <li>Klik ponovo: prekida ili uključuje animaciju</li>
+        </ul>
+      </div>
+      <footer>Alat koristi boje, oblike i jednostavne animacije da učenicima olakša razumevanje uloga unutar ćelije.</footer>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Interaction texts (from input JSON)
+  const texts = {
+    nucleus: "Nukleus je kontrolni centar ćelije. On čuva DNK i reguliše rad ćelije.",
+    mitochondria: "Mitohondrije proizvode energiju za ćeliju, poznate i kao energetske centrale.",
+    er: "Endoplazmatski retikulum pomaže u sintezi proteina i lipida.",
+    lysosome: "Lizozomi razgrađuju otpadne materije u ćeliji."
+  };
+
+  // Track click counts for each interactive element
+  const clickCounts = {};
+
+  // Helper: create popup near pointer or target bbox
+  function showPopup(text, x, y){
+    removePopup();
+    const popup = document.createElement('div');
+    popup.className = 'popup';
+    popup.innerHTML = '<button class="close" title="Zatvori">✕</button><div class="title">Informacija</div><div class="text">'+text+'</div><small>Kliknite X ili izvan prozora da zatvorite.</small>';
+    document.body.appendChild(popup);
+    // position, ensure within viewport
+    const pad = 12;
+    const rect = popup.getBoundingClientRect();
+    let left = x + 12;
+    let top = y + 12;
+    if(left + rect.width + pad > window.innerWidth) left = x - rect.width - 12;
+    if(top + rect.height + pad > window.innerHeight) top = y - rect.height - 12;
+    popup.style.left = Math.max(pad, left) + 'px';
+    popup.style.top = Math.max(pad, top) + 'px';
+
+    popup.querySelector('.close').addEventListener('click', removePopup);
+    // close on outside click
+    setTimeout(()=> {
+      window.addEventListener('click', outsideListener);
+    },0);
+    function outsideListener(e){
+      if(!popup.contains(e.target)){
+        removePopup();
+      }
+    }
+    popup._outsideListener = outsideListener;
+  }
+
+  function removePopup(){
+    const existing = document.querySelector('.popup');
+    if(existing){
+      window.removeEventListener('click', existing._outsideListener);
+      existing.remove();
+    }
+  }
+
+  // Toggle classes for animations
+  function toggleNucleusGlow(el){
+    el.classList.toggle('glow');
+  }
+  function toggleERHighlight(el){
+    // add class to group (use classList)
+    el.classList.toggle('er-highlight');
+  }
+  function toggleLysosomePulse(el){
+    const circles = el.querySelectorAll('circle');
+    circles.forEach(c=> c.classList.toggle('pulse'));
+  }
+  function toggleMitoWave(el){
+    // add or remove class mito-wave on the mito group (causes .mito-fold animations)
+    el.classList.toggle('mito-wave');
+  }
+
+  // Map element ids / classes to behaviors
+  function handleNucleusClick(evt, el){
+    const id = 'nucleus';
+    clickCounts[id] = (clickCounts[id] || 0) + 1;
+    const count = clickCounts[id];
+    const p = getEventPosition(evt, el);
+    if(count === 1){
+      showPopup(texts.nucleus, p.x, p.y);
+    } else {
+      // then_next: istakni nukleus plavim sjajem
+      toggleNucleusGlow(el);
+    }
+  }
+
+  function handleERClick(evt, el){
+    const id = el.id || 'er';
+    clickCounts[id] = (clickCounts[id] || 0) + 1;
+    const count = clickCounts[id];
+    const p = getEventPosition(evt, el);
+    if(count === 1){
+      showPopup(texts.er, p.x, p.y);
+    } else {
+      // then_next: naglasite ga žutim sjajem
+      toggleERHighlight(el);
+    }
+  }
+
+  function handleMitoClick(evt, el){
+    const id = el.id || 'mito';
+    clickCounts[id] = (clickCounts[id] || 0) + 1;
+    const count = clickCounts[id];
+    const p = getEventPosition(evt, el);
+    if(count === 1){
+      showPopup(texts.mitochondria, p.x, p.y);
+    } else {
+      // then_next: dodaj animaciju talasanja u centru svakog objekta
+      // apply to the clicked mitochondrion; we will animate its inner folds
+      toggleMitoWave(el);
+      // small temporary visual center ripple: add a pulse circle element
+      createMitoRipple(el);
+    }
+  }
+
+  function handleLysClick(evt, el){
+    const id = el.id || ('lys_'+Math.random());
+    clickCounts[id] = (clickCounts[id] || 0) + 1;
+    const count = clickCounts[id];
+    const p = getEventPosition(evt, el);
+    if(count === 1){
+      showPopup(texts.lysosome, p.x, p.y);
+    } else {
+      // then_next: animacija kratko pulsiranje crvene boje
+      // toggle pulse on the circle
+      const circle = el.querySelector('circle');
+      if(circle){
+        circle.classList.toggle('pulse');
+        // also set a short red highlight stroke when pulsing
+        if(circle.classList.contains('pulse')){
+          circle.setAttribute('stroke-width','2.2');
+        } else {
+          circle.setAttribute('stroke-width','1.5');
+        }
+      }
+    }
+  }
+
+  // Helper: compute event position (client) for popup positioning
+  function getEventPosition(evt, el){
+    let x = (evt.clientX || (evt.touches && evt.touches[0] && evt.touches[0].clientX) ) || (window.innerWidth/2);
+    let y = (evt.clientY || (evt.touches && evt.touches[0] && evt.touches[0].clientY) ) || (window.innerHeight/2);
+    // if no client coordinates (keyboard events), fallback to element center
+    if(!x || !y){
+      const rect = el.getBoundingClientRect();
+      x = rect.left + rect.width/2;
+      y = rect.top + rect.height/2;
+    }
+    return {x,y};
+  }
+
+  // Create a small ripple effect within mitochondrion group (temporary)
+  function createMitoRipple(mitoGroup){
+    // create an SVG circle and animate its opacity/scale via CSS then remove
+    const svg = document.getElementById('cellSvg');
+    const bbox = mitoGroup.getBBox();
+    const cx = bbox.x + bbox.width/2;
+    const cy = bbox.y + bbox.height/2;
+    const ripple = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ripple.setAttribute('cx',cx);
+    ripple.setAttribute('cy',cy);
+    ripple.setAttribute('r',6);
+    ripple.setAttribute('fill','none');
+    ripple.setAttribute('stroke','#3da34d');
+    ripple.setAttribute('stroke-width','2');
+    ripple.style.opacity = '0.9';
+    ripple.style.transition = 'transform 900ms ease-out, opacity 900ms ease-out';
+    svg.appendChild(ripple);
+    // trigger transform
+    requestAnimationFrame(()=> {
+      ripple.style.transformOrigin = `${cx}px ${cy}px`;
+      ripple.style.transform = 'scale(8)';
+      ripple.style.opacity = '0';
+    });
+    setTimeout(()=> ripple.remove(), 950);
+  }
+
+  // Attach event listeners
+  function initInteractivity(){
+    const nucleus = document.getElementById('nucleus');
+    nucleus.addEventListener('click', function(evt){
+      evt.stopPropagation();
+      handleNucleusClick(evt, nucleus);
+    });
+
+    const er = document.getElementById('er');
+    er.addEventListener('click', function(evt){
+      evt.stopPropagation();
+      handleERClick(evt, er);
+    });
+
+    // mitochondria: multiple elements share same behavior
+    const mitos = document.querySelectorAll('.mito');
+    mitos.forEach(m => {
+      m.addEventListener('click', function(evt){
+        evt.stopPropagation();
+        handleMitoClick(evt, m);
+      });
+    });
+
+    // lysosomes
+    const lys = document.querySelectorAll('.lys');
+    lys.forEach(l => {
+      l.addEventListener('click', function(evt){
+        evt.stopPropagation();
+        handleLysClick(evt, l);
+      });
+    });
+
+    // Close popup on ESC
+    window.addEventListener('keydown', function(e){
+      if(e.key === 'Escape') removePopup();
+    });
+
+    // Click on background closes popup and does nothing else
+    document.getElementById('svgWrap').addEventListener('click', function(){
+      removePopup();
+    });
+  }
+
+  // Start
+  initInteractivity();
+
+  // Accessibility: provide focusable elements and keyboard activation
+  // Make interactive groups focusable and respond to Enter/Space
+  const interactiveSelectors = ['#nucleus','.mito','#er','.lys'];
+  interactiveSelectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el=>{
+      el.setAttribute('tabindex','0');
+      el.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          el.click();
+        }
+      });
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

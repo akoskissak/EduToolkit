@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vizualizacija životinjske ćelije</title>
+<style>
+  /* audience: osnovnoškolci i srednjoškolci */
+  :root{
+    --bg:#f7fbff;
+    --cell-bg: #eaf6ff;
+    --membrane:#b0d0f0;
+    --cyto:#e6f7ff;
+    --nucleus-fill:#cfe8ff;
+    --nucleus-stroke:#6faee8;
+    --mito-fill:#c7f0d6;
+    --mito-stroke:#4dab6e;
+    --er-fill:#fff6c9;
+    --er-stroke:#f0d85c;
+    --lyso:#ff9a9a;
+    --rib:#7a7a7a;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  body{
+    margin:0;
+    background: radial-gradient(circle at 20% 10%, #ffffff, var(--bg) 40%);
+    color:#1b2b3a;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  header{
+    text-align:center;
+    padding:20px 10px 10px;
+  }
+
+  h1{
+    margin:0;
+    font-size:28px;
+    color:#08385a;
+  }
+
+  p.description{
+    margin:8px auto 18px;
+    max-width:900px;
+    color:#13384d;
+    font-size:15px;
+  }
+
+  .viewer{
+    display:flex;
+    justify-content:center;
+    padding-bottom:30px;
+  }
+
+  svg{
+    border-radius:8px;
+    box-shadow: 0 6px 20px rgba(20,40,60,0.12);
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(245,255,255,0.9));
+  }
+
+  .label{
+    font-size:13px;
+    fill:#063248;
+    font-weight:600;
+    pointer-events:none;
+  }
+
+  .arrow{
+    stroke:#063248;
+    stroke-width:1.6;
+    fill:none;
+    marker-end: url(#arrowhead);
+    opacity:0.9;
+    pointer-events:none;
+  }
+
+  /* interactive cursors */
+  .interactive{ cursor:pointer; transition:transform 0.12s ease; }
+  .interactive:active{ transform: translateY(1px) scale(0.998); }
+
+  /* nucleus styles */
+  .nucleus-core{ fill:var(--nucleus-fill); stroke:var(--nucleus-stroke); stroke-width:3; }
+  .nucleus-dots{ fill:#6aa8e6; opacity:0.9; }
+
+  /* mitochondria */
+  .mito{ fill:var(--mito-fill); stroke:var(--mito-stroke); stroke-width:2; }
+  .mito-fold{ stroke:#6fc77f; stroke-width:2; fill:none; opacity:0.9; }
+
+  /* ER */
+  .er-tube{ fill:none; stroke:var(--er-stroke); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+  .er-little{ stroke: #f6e27b; stroke-width:8; fill:none; }
+
+  /* lysosomes */
+  .lyso{ fill:var(--lyso); stroke:#e45b5b; stroke-width:1.6; }
+
+  /* ribosomes */
+  .rib{ fill:var(--rib); opacity:0.85; }
+
+  /* highlights & animations */
+  .glow-blue{
+    filter: drop-shadow(0 0 8px rgba(50,150,255,0.7)) drop-shadow(0 0 16px rgba(80,170,255,0.35));
+    transition:filter 0.3s ease;
+  }
+
+  .glow-yellow{
+    filter: drop-shadow(0 0 10px rgba(255,210,80,0.85));
+  }
+
+  @keyframes pulse-red {
+    0%{ transform: scale(1); opacity:1; }
+    60%{ transform: scale(1.25); opacity:0.8; }
+    100%{ transform: scale(1); opacity:1; }
+  }
+  .pulse{
+    animation: pulse-red 700ms ease-in-out;
+  }
+
+  /* wave for mitochondria */
+  .mito-wave{
+    fill:none;
+    stroke: rgba(80,180,120,0.85);
+    stroke-width:4;
+    stroke-linecap:round;
+    animation: mitoWave 900ms ease-out forwards;
+    pointer-events:none;
+  }
+  @keyframes mitoWave{
+    0%{ opacity:0.9; transform: scale(0.6); }
+    60%{ opacity:0.6; transform: scale(1.15); }
+    100%{ opacity:0; transform: scale(1.6); }
+  }
+
+  /* popup */
+  #popup{
+    position:fixed;
+    min-width:220px;
+    max-width:320px;
+    background: linear-gradient(180deg,#ffffff,#f8fbff);
+    border-radius:10px;
+    box-shadow:0 12px 30px rgba(12,40,80,0.18);
+    padding:12px 14px;
+    z-index:999;
+    display:none;
+    color:#052233;
+    font-size:14px;
+    border:1px solid rgba(6,50,80,0.06);
+  }
+  #popup .title{
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  #popup .close{
+    position:absolute;
+    top:8px;
+    right:10px;
+    background:transparent;
+    border:none;
+    color:#597d93;
+    font-weight:700;
+    cursor:pointer;
+    font-size:14px;
+  }
+
+  /* small help note */
+  .hint{
+    text-align:center;
+    font-size:13px;
+    color:#2b4b5f;
+    margin-top:6px;
+  }
+
+  /* responsive */
+  @media (max-width:900px){
+    svg{ width:92%; height:auto; }
+    h1{ font-size:20px; }
+    p.description{ font-size:14px; padding:0 10px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Vizualizacija životinjske ćelije</h1>
+    <p class="description">Ovaj interaktivni alat omogućava učenicima da istraže unutrašnju strukturu životinjske ćelije. Klikom na svaku komponentu otvara se prozorčić sa kratkim objašnjenjem o njenoj ulozi. Ponovnim klikom na isti element aktiviraju se kratke animacije koje naglašavaju funkciju.</p>
+  </header>
+
+  <div class="viewer" aria-hidden="false">
+    <svg id="cellSvg" width="920" height="640" viewBox="0 0 920 640" role="img" aria-label="Interaktivna šema životinjske ćelije">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+          <path d="M0,0 L10,4 L0,8 z" fill="#063248" />
+        </marker>
+
+        <filter id="softGlow">
+          <feGaussianBlur stdDeviation="3.4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Cell membrane & cytoplasm -->
+      <g id="cellGroup">
+        <ellipse cx="460" cy="320" rx="360" ry="260" fill="url(#cellGrad)" stroke="var(--membrane)" stroke-width="6" opacity="0.98" />
+        <!-- fill background cytoplasm as lighter ellipse -->
+        <ellipse cx="460" cy="320" rx="330" ry="230" fill="var(--cyto)" stroke="none" opacity="0.9" />
+      </g>
+
+      <!-- Nucleus (central) -->
+      <g id="nucleus" class="interactive" transform="translate(0,0)" aria-label="nukleus">
+        <ellipse class="nucleus-core" cx="460" cy="320" rx="120" ry="90" />
+        <!-- inner dots -->
+        <!-- create many small dots -->
+        <g class="nucleus-dots">
+          <circle cx="430" cy="295" r="3.6"/>
+          <circle cx="455" cy="305" r="2.8"/>
+          <circle cx="480" cy="290" r="2.7"/>
+          <circle cx="445" cy="330" r="3.1"/>
+          <circle cx="475" cy="320" r="2.9"/>
+          <circle cx="490" cy="305" r="2.6"/>
+          <circle cx="435" cy="310" r="2.7"/>
+          <circle cx="470" cy="340" r="2.4"/>
+          <circle cx="445" cy="285" r="2.6"/>
+          <circle cx="500" cy="330" r="2.3"/>
+          <circle cx="420" cy="320" r="2.3"/>
+          <circle cx="490" cy="280" r="2.2"/>
+        </g>
+      </g>
+
+      <!-- Endoplasmic reticulum (ER) around nucleus, branching -->
+      <g id="er" class="interactive" aria-label="endoplazmatski retikulum">
+        <path class="er-tube" d="M345 260 C370 240, 395 240, 430 260 S 485 295, 500 310" />
+        <path class="er-tube" d="M365 300 C385 285, 410 285, 445 305 S 480 330, 525 340" />
+        <path class="er-tube" d="M380 335 C405 330, 435 330, 465 345 S 515 370, 555 365" />
+        <!-- little connecting loops -->
+        <path class="er-little" d="M535 278 C545 270, 565 270, 580 278" />
+        <path class="er-little" d="M325 295 C335 285, 355 285, 372 295" />
+      </g>
+
+      <!-- Mitochondria - several oval shapes with inner folds -->
+      <g id="mitochondria">
+        <!-- mito 1 left -->
+        <g id="mito1" class="interactive" transform="translate(240,370)" aria-label="mitohondrija">
+          <ellipse class="mito" cx="0" cy="0" rx="36" ry="20" />
+          <path class="mito-fold" d="M-30,-10 C -10,-5, -5,5, 10,2" />
+          <path class="mito-fold" d="M-25,6 C -5,2, 5,8, 25,5" />
+        </g>
+
+        <!-- mito 2 right -->
+        <g id="mito2" class="interactive" transform="translate(660,380)" aria-label="mitohondrija">
+          <ellipse class="mito" cx="0" cy="0" rx="44" ry="24" />
+          <path class="mito-fold" d="M-32,-8 C -10,-3, -2,6, 18,4" />
+          <path class="mito-fold" d="M-30,6 C -8,2, 6,9, 30,6" />
+        </g>
+
+        <!-- mito 3 upper right -->
+        <g id="mito3" class="interactive" transform="translate(620,230)" aria-label="mitohondrija">
+          <ellipse class="mito" cx="0" cy="0" rx="34" ry="18" />
+          <path class="mito-fold" d="M-28,-6 C -8,-2, 0,6, 15,3" />
+          <path class="mito-fold" d="M-20,6 C -6,3, 6,8, 22,6" />
+        </g>
+      </g>
+
+      <!-- Lysosomes - small red circles scattered -->
+      <g id="lysosomes">
+        <circle id="lyso1" class="lyso interactive" cx="340" cy="220" r="9" />
+        <circle id="lyso2" class="lyso interactive" cx="520" cy="450" r="9" />
+        <circle id="lyso3" class="lyso interactive" cx="610" cy="150" r="8" />
+      </g>
+
+      <!-- Ribosomes small dots -->
+      <g id="ribosomes">
+        <circle class="rib" cx="410" cy="230" r="3.6" />
+        <circle class="rib" cx="395" cy="250" r="3.2" />
+        <circle class="rib" cx="480" cy="240" r="3.3" />
+        <circle class="rib" cx="515" cy="265" r="3.1" />
+        <circle class="rib" cx="440" cy="360" r="3.4" />
+        <circle class="rib" cx="360" cy="310" r="2.9" />
+        <circle class="rib" cx="500" cy="200" r="3.0" />
+        <circle class="rib" cx="600" cy="320" r="3.2" />
+        <circle class="rib" cx="520" cy="360" r="2.8" />
+      </g>
+
+      <!-- Labels with arrows placed so they don't obscure components -->
+      <g id="labels">
+        <line class="arrow" x1="460" y1="200" x2="460" y2="240" marker-end="url(#arrowhead)"/>
+        <text class="label" x="460" y="188" text-anchor="middle">Nukleus</text>
+
+        <line class="arrow" x1="200" y1="390" x2="260" y2="370" />
+        <text class="label" x="150" y="386">Mitohondrija</text>
+
+        <line class="arrow" x1="820" y1="380" x2="700" y2="378" />
+        <text class="label" x="820" y="370">Mitohondrija</text>
+
+        <line class="arrow" x1="740" y1="230" x2="650" y2="230" />
+        <text class="label" x="780" y="220">Mitohondrija</text>
+
+        <line class="arrow" x1="380" y1="150" x2="345" y2="220" />
+        <text class="label" x="320" y="138">Lizozom</text>
+
+        <line class="arrow" x1="520" y1="520" x2="520" y2="460" />
+        <text class="label" x="520" y="540" text-anchor="middle">Lizozom</text>
+
+        <line class="arrow" x1="600" y1="110" x2="610" y2="160" />
+        <text class="label" x="640" y="100">Lizozom</text>
+
+        <line class="arrow" x1="560" y1="310" x2="520" y2="300" />
+        <text class="label" x="620" y="300">Endoplazmatski retikulum</text>
+
+        <line class="arrow" x1="480" y1="260" x2="445" y2="305" />
+        <text class="label" x="480" y="240">Ribosomi</text>
+
+      </g>
+
+    </svg>
+  </div>
+
+  <div id="popup" role="dialog" aria-modal="true">
+    <button class="close" title="Zatvori">×</button>
+    <div class="title" id="popupTitle"></div>
+    <div id="popupText"></div>
+  </div>
+
+  <div class="hint">Kliknite na Nukleus, Mitohondriju, Endoplazmatski retikulum ili Lizozom da vidite objašnjenje i kratku animaciju.</div>
+
+<script>
+  // Developer metadata: audience = osnovnoškolci i srednjoškolci
+
+  (function(){
+    const svg = document.getElementById('cellSvg');
+    const popup = document.getElementById('popup');
+    const popupText = document.getElementById('popupText');
+    const popupTitle = document.getElementById('popupTitle');
+    const closeBtn = popup.querySelector('.close');
+
+    // Click counters per object id
+    const clickCounts = {};
+
+    // Map element ids or logical groups to behaviors and text (from JSON)
+    const interactions = {
+      'nucleus': {
+        title: 'Nukleus',
+        firstText: "Nukleus je kontrolni centar ćelije. On čuva DNK i reguliše rad ćelije.",
+        thenActions: [
+          function highlightNucleus(el){
+            const nucleusGroup = document.getElementById('nucleus');
+            nucleusGroup.classList.add('glow-blue');
+            setTimeout(()=> nucleusGroup.classList.remove('glow-blue'), 2200);
+          }
+        ]
+      },
+      'mito': {
+        title: 'Mitohondrija',
+        firstText: "Mitohondrije proizvode energiju za ćeliju, poznate i kao energetske centrale.",
+        thenActions: [
+          function waveMito(el){
+            // create a wave path near the clicked mitochondrion g transform
+            const bounds = el.getBoundingClientRect();
+            const svgRect = svg.getBoundingClientRect();
+            // compute center in svg coords
+            const cx = (bounds.left + bounds.right)/2 - svgRect.left;
+            const cy = (bounds.top + bounds.bottom)/2 - svgRect.top;
+            // create an expanding ellipse (SVG) with class mito-wave
+            const wave = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+            wave.setAttribute('cx', cx);
+            wave.setAttribute('cy', cy);
+            wave.setAttribute('rx', 20);
+            wave.setAttribute('ry', 10);
+            wave.setAttribute('class','mito-wave');
+            // append to svg on top
+            svg.appendChild(wave);
+            // animate attributes slightly using CSS transform on SVG via style
+            // let CSS animation run then remove
+            setTimeout(()=> {
+              if(wave && wave.parentNode) wave.parentNode.removeChild(wave);
+            }, 950);
+          }
+        ]
+      },
+      'er': {
+        title: 'Endoplazmatski retikulum',
+        firstText: "Endoplazmatski retikulum pomaže u sintezi proteina i lipida.",
+        thenActions: [
+          function glowER(el){
+            const er = document.getElementById('er');
+            er.classList.add('glow-yellow');
+            setTimeout(()=> er.classList.remove('glow-yellow'), 2000);
+          }
+        ]
+      },
+      'lyso': {
+        title: 'Lizozom',
+        firstText: "Lizozomi razgrađuju otpadne materije u ćeliji.",
+        thenActions: [
+          function pulseLyso(el){
+            el.classList.add('pulse');
+            setTimeout(()=> el.classList.remove('pulse'), 760);
+          }
+        ]
+      }
+    };
+
+    // Helper to show popup at position and with content
+    function showPopup(title, text, clientX, clientY){
+      popupTitle.textContent = title;
+      popupText.textContent = text;
+      popup.style.display = 'block';
+      // position: try to place near click but constrain to viewport
+      const pad = 12;
+      const boxW = 300;
+      const boxH = 120;
+      let left = clientX + 14;
+      let top = clientY - 10;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if(left + boxW + pad > vw) left = clientX - boxW - 18;
+      if(top + boxH + pad > vh) top = vh - boxH - 18;
+      if(top < 8) top = 8;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+    }
+
+    function hidePopup(){
+      popup.style.display = 'none';
+    }
+
+    closeBtn.addEventListener('click', hidePopup);
+    document.addEventListener('click', function(e){
+      // if click outside popup and not on interactive element, close
+      if(popup.style.display === 'block'){
+        const inside = popup.contains(e.target);
+        const isInteractiveClick = e.target.closest && e.target.closest('.interactive');
+        if(!inside && !isInteractiveClick){
+          hidePopup();
+        }
+      }
+    });
+
+    // Add click handlers for nucleus
+    const nucleusG = document.getElementById('nucleus');
+    nucleusG.addEventListener('click', function(evt){
+      evt.stopPropagation();
+      const id = 'nucleus';
+      clickCounts[id] = (clickCounts[id]||0);
+      if(clickCounts[id] === 0){
+        // first action: open popup with text
+        showPopup(interactions[id].title, interactions[id].firstText, evt.clientX, evt.clientY);
+      } else {
+        // subsequent: run actions sequentially
+        interactions[id].thenActions.forEach(fn => {
+          try{ fn(nucleusG); } catch(e){ console.error(e); }
+        });
+      }
+      clickCounts[id]++;
+    });
+
+    // Add ER handler
+    const erG = document.getElementById('er');
+    erG.addEventListener('click', function(evt){
+      evt.stopPropagation();
+      const id = 'er';
+      clickCounts[id] = (clickCounts[id]||0);
+      if(clickCounts[id] === 0){
+        showPopup(interactions[id].title, interactions[id].firstText, evt.clientX, evt.clientY);
+      } else {
+        interactions[id].thenActions.forEach(fn => { try{ fn(erG); } catch(e){ console.error(e); }});
+      }
+      clickCounts[id]++;
+    });
+
+    // Add mitochondria handlers (multiple elements share same behavior)
+    const mitoNodes = ['mito1','mito2','mito3'];
+    mitoNodes.forEach(mid=>{
+      const g = document.getElementById(mid);
+      g.addEventListener('click', function(evt){
+        evt.stopPropagation();
+        const id = 'mito_' + mid;
+        // map to shared grouping 'mito' for counting so each mitochondrion can track its own clicks
+        clickCounts[id] = (clickCounts[id]||0);
+        if(clickCounts[id] === 0){
+          showPopup(interactions['mito'].title, interactions['mito'].firstText, evt.clientX, evt.clientY);
+        } else {
+          interactions['mito'].thenActions.forEach(fn => { try{ fn(g); } catch(e){ console.error(e); }});
+        }
+        clickCounts[id]++;
+      });
+    });
+
+    // Lysosomes handlers (each)
+    const lysoIds = ['lyso1','lyso2','lyso3'];
+    lysoIds.forEach(lid=>{
+      const el = document.getElementById(lid);
+      el.addEventListener('click', function(evt){
+        evt.stopPropagation();
+        const id = lid;
+        clickCounts[id] = (clickCounts[id]||0);
+        if(clickCounts[id] === 0){
+          showPopup(interactions['lyso'].title, interactions['lyso'].firstText, evt.clientX, evt.clientY);
+        } else {
+          interactions['lyso'].thenActions.forEach(fn => { try{ fn(el); } catch(e){ console.error(e); }});
+        }
+        clickCounts[id]++;
+      });
+    });
+
+    // small enhancement: hovering interactive elements slightly brightens them
+    const interactiveEls = svg.querySelectorAll('.interactive');
+    interactiveEls.forEach(el=>{
+      el.addEventListener('mouseenter', ()=> {
+        el.style.opacity = '0.98';
+      });
+      el.addEventListener('mouseleave', ()=> {
+        el.style.opacity = '';
+      });
+    });
+
+    // Accessibility: allow keyboard activation by Enter when focused
+    // Make interactive groups focusable by adding tabindex and key listeners
+    const makeFocusable = (idList)=>{
+      idList.forEach(id=>{
+        const el = document.getElementById(id);
+        if(el){
+          el.setAttribute('tabindex','0');
+          el.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter' || e.key === ' '){
+              e.preventDefault();
+              el.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:window.innerWidth/2,clientY:window.innerHeight/2}));
+            }
+          });
+        }
+      });
+    };
+    makeFocusable(['nucleus','er','mito1','mito2','mito3','lyso1','lyso2','lyso3']);
+
+    // Small decorative effect: gentle floating of mitochondria to symbolize activity (continuous subtle)
+    const float = (id, amp, dur, delay) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      let up = true;
+      setInterval(()=> {
+        el.style.transition = `transform ${dur}ms ease-in-out`;
+        if(up){
+          el.style.transform = `translateY(${-amp}px)`;
+        } else {
+          el.style.transform = `translateY(${amp}px)`;
+        }
+        up = !up;
+      }, dur + (delay||0));
+    };
+    float('mito1', 3, 1800, 100);
+    float('mito2', 4, 2200, 200);
+    float('mito3', 2.5, 1600, 50);
+
+    // Ensure popup is repositioned if window resized
+    window.addEventListener('resize', ()=> {
+      if(popup.style.display === 'block'){
+        // hide popup to avoid odd placement; user can re-open by clicking again
+        hidePopup();
+      }
+    });
+
+    // Provide quick visual initial hints: small intro highlight of nucleus and ER for clarity
+    setTimeout(()=> {
+      nucleusG.classList.add('glow-blue');
+      erG.classList.add('glow-yellow');
+      setTimeout(()=> {
+        nucleusG.classList.remove('glow-blue');
+        erG.classList.remove('glow-yellow');
+      }, 1400);
+    }, 700);
+
+  })();
+</script>
+</body>
+</html>
